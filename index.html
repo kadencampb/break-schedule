@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Break Schedule Tool</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="card-title mb-0">Break Schedule Tool</h4>
+            </div>
+            <div class="card-body">
+                <p>Select the custom daily schedule (.xlsx) from UKG to process</p>
+                <!-- Button to select the file -->
+                <button id="selectFileButton" class="btn btn-primary">Choose (.xlsx) file to process</button>
+                <!-- Hidden file input for XLSX file -->
+                <input type="file" id="fileInput" accept=".xlsx" style="display: none;" />
+            </div>
+            <div id="downloadLinkFooter" class="card-footer text-center d-none">
+                <!-- Link to download the generated CSV -->
+                <a id="downloadLink" class="btn btn-success d-none" download="Schedule.csv">Save result</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer for ownership notice -->
+    <footer class="text-center mt-4">
+        <p>&copy; 2024 Kaden Campbell. All rights reserved.</p>
+    </footer>
+
+    <!-- Link to the external script.js file -->
+    <script src="script.js"></script>
+</body>
+</html>
