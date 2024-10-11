@@ -30,7 +30,7 @@ document.getElementById('fileInput').addEventListener('change', (event) => {
     
         // Set column widths
         newWorksheet['!cols'] = [
-            { wpx: 40 }, { wpx: 120 }, { wpx: 150 }, { wpx: 100 }, { wpx: 80 }, { wpx: 80 }, { wpx: 80 }, { wpx: 80 }
+            { wpx: 40 }, { wpx: 120 }, { wpx: 180 }, { wpx: 100 }, { wpx: 80 }, { wpx: 80 }, { wpx: 80 }, { wpx: 80 }
         ];
     
         // Define the default font style (Arial, 10pt)
@@ -38,6 +38,11 @@ document.getElementById('fileInput').addEventListener('change', (event) => {
 
         // Define the header style
         const headerStyle = {
+            font: { bold: true, name: 'Arial', sz: 10 }
+        };
+
+        // Define the department header style
+        const departmentStyle = {
             font: { bold: true, name: 'Arial', sz: 10 },
             fill: { fgColor: { rgb: 'CCFFCC' } },
             border: {
@@ -51,14 +56,7 @@ document.getElementById('fileInput').addEventListener('change', (event) => {
         // Define title row style (font size 12, center alignment)
         const titleStyle = {
             font: { bold: true, name: 'Arial', sz: 13 },
-            alignment: { horizontal: 'center', vertical: 'center' },
-            fill: { fgColor: { rgb: 'CCFFCC' } },
-            border: {
-                top: { style: 'thin', color: { rgb: 'AAAAAA' } },
-                bottom: { style: 'thin', color: { rgb: 'AAAAAA' } },
-                left: { style: 'thin', color: { rgb: 'AAAAAA' } },
-                right: { style: 'thin', color: { rgb: 'AAAAAA' } }
-            }
+            alignment: { horizontal: 'center', vertical: 'center' }
         };
     
         // Apply default font style to all cells
@@ -83,12 +81,12 @@ document.getElementById('fileInput').addEventListener('change', (event) => {
             newWorksheet[cellAddress].s = headerStyle;
         });
     
-        // Apply headerStyle and merge department rows
+        // Apply departmentStyle and merge department rows
         output.forEach((row, index) => {
             if (index > 1 && row[0]) {
                 for (let col = 0; col < row.length; col++) {
                     const cellAddress = XLSX.utils.encode_cell({ r: index, c: col });
-                    newWorksheet[cellAddress].s = headerStyle;
+                    newWorksheet[cellAddress].s = departmentStyle;
                 }
                 const mergeRange = {
                     s: { r: index, c: 0 },
@@ -111,7 +109,6 @@ document.getElementById('fileInput').addEventListener('change', (event) => {
         link.classList.remove('d-none');
         footer.classList.remove('d-none');
         link.style.display = 'inline-block';
-        document.getElementById('footer').style.display = 'block';
     };
     
     reader.readAsArrayBuffer(file);
@@ -126,6 +123,17 @@ function processSchedule(rows) {
         // If the first column contains a department name, assign it to 'dept' and skip further processing for that row
         if (rows[i][0]) {
             dept = rows[i][0];
+
+            // Rename "Mgmt Retail" to "Management"
+            if (dept === "Mgmt Retail") {
+                dept = "Management";
+            }
+
+            // // Remove "Training-" from department names that start with it
+            // if (dept.startsWith("Training-")) {
+            //     dept = dept.replace("Training-", "");
+            // }
+            
             continue;
         }
 
@@ -141,6 +149,32 @@ function processSchedule(rows) {
             interval: interval
         });
     }
+
+    // Predefined order of departments
+    const departmentOrder = ['Frontline', 'Hardgoods', 'Softgoods', 'Order Fulfillment', 'Product Movement', 'Shop', 'Management'];
+
+    // Function to get the department index for sorting
+    function getDeptOrder(dept) {
+        let index = departmentOrder.indexOf(dept);
+        return index === -1 ? departmentOrder.length : index; // Departments not in the list come last, but in original order
+    }
+
+    // Sort the schedule based on the predefined department order, leaving the rest unsorted
+    schedule.sort((a, b) => {
+        let deptOrderA = getDeptOrder(a.dept);
+        let deptOrderB = getDeptOrder(b.dept);
+        
+        if (deptOrderA !== deptOrderB) {
+            return deptOrderA - deptOrderB;  // Sort by department order if they differ
+        }
+        
+        // Maintain the original order within departments for unsorted departments
+        if (deptOrderA === departmentOrder.length) {
+            return 0;  // Leave unsorted departments in original order
+        }
+
+        return 0;  // Don't sort within predefined departments by name, keep original order
+    });
 
     // Calculate the earliest and latest times for each person's shift
     let shifts = {};
@@ -219,11 +253,11 @@ function processSchedule(rows) {
         if (row.job === 'Misc Events') news_breaks[row.name] = row.interval[0];
     });
 
-    // Remove duplicate rows for 'Mgmt Retail' department, keeping only unique entries by name
+    // Remove duplicate rows for 'Management' department, keeping only unique entries by name
     let uniqueRows = [];
     let seen = new Set();
     schedule.forEach(row => {
-        if (row.dept === 'Mgmt Retail' && row.job === 'Management') {
+        if (row.dept === 'Management' && row.job === 'Management') {
             const key = row.name;
             if (!seen.has(key)) {
                 seen.add(key);
@@ -247,7 +281,7 @@ function processSchedule(rows) {
 
     // Create the output array for Excel
     const output = [];
-    output.push(['Dept.', 'Job', 'Name', 'Shift', 'News Break', 'Rest Break', 'Meal Break', 'Rest Break']);
+    output.push(['Dept.', 'Job', 'Name', 'Shift', 'News Break', '15', '30', '15']);
 
     // Track printed breaks to avoid duplicate entries
     let breaksPrinted = new Set();
