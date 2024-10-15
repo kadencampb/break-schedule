@@ -26,18 +26,23 @@ document.getElementById("fileInput").addEventListener("change", (event) => {
         const blob = new Blob([stringToArrayBuffer(workbookBlob)], {type: "application/octet-stream"});
         const url = URL.createObjectURL(blob);
     
-        // Create a temporary anchor element
-        const link = document.createElement("a");
+        // // Create a temporary anchor element
+        // const link = document.createElement("a");
+
+        const link = document.getElementById("downloadLink");
+        const footer = document.getElementById("downloadLinkFooter");
         link.href = url;
         link.download = `Break Schedule ${date}.xlsx`;
+        link.classList.remove("d-none");
+        footer.classList.remove("d-none");  
 
-        // Programmatically click the link to trigger the download
-        document.body.appendChild(link); // Append the link to the document body
+        // // Programmatically click the link to trigger the download
+        // document.body.appendChild(link); // Append the link to the document body
         link.click(); // Simulate a click on the link
 
-        // Clean up by removing the link and revoking the object URL
-        document.body.removeChild(link); // Remove the link
-        URL.revokeObjectURL(url); // Revoke the object URL
+        // // Clean up by removing the link and revoking the object URL
+        // document.body.removeChild(link); // Remove the link
+        // URL.revokeObjectURL(url); // Revoke the object URL
     };    
     
     reader.readAsArrayBuffer(file);
