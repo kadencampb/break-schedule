@@ -1,0 +1,8 @@
+(x) center align breaks
+(x) news break to the right
+(x) break headers in each row
+(x) background color to blue
+( ) no breaks during banking
+(x) no middle initials
+(x) put "x" in cells with no breaks
+(x) remove save result button (download automatically instead)

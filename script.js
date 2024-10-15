@@ -1,157 +1,142 @@
-document.getElementById('selectFileButton').addEventListener('click', () => {
-    document.getElementById('fileInput').click();
+document.getElementById("selectFileButton").addEventListener("click", () => {
+    document.getElementById("fileInput").click();
 });
 
-document.getElementById('fileInput').addEventListener('change', (event) => {
+document.getElementById("fileInput").addEventListener("change", (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
 
-    reader.onload = (e) => {
-        const arrayBuffer = e.target.result;
-        const data = new Uint8Array(arrayBuffer);
+    reader.onload = (event) => {
+        // Read the data from the selected file into an XLSX workbook
+        const workbook = XLSX.read(new Uint8Array(event.target.result), {type: "array"});
     
-        // Use xlsx-style to read the workbook
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-    
-        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        const output = processSchedule(rows);
-        
-        // Add new title row with font size 13, center-aligned, and merged columns
-        const titleRow = ['REI Daily Schedule'];
-        output.unshift(titleRow);
-    
-        const newWorkbook = XLSX.utils.book_new();
-        const newWorksheet = XLSX.utils.aoa_to_sheet(output);
-        XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, 'Break Schedule');
-    
-        // Set column widths
-        newWorksheet['!cols'] = [
-            { wpx: 40 }, { wpx: 120 }, { wpx: 180 }, { wpx: 100 }, { wpx: 80 }, { wpx: 80 }, { wpx: 80 }, { wpx: 80 }
-        ];
-    
-        // Define the default font style (Arial, 10pt)
-        const defaultFont = { font: { name: 'Arial', sz: 10 } };
+        // Convert the first worksheet from the XLSX workbook into JSON row data
+        const rowData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
 
-        // Define the header style
-        const headerStyle = {
-            font: { bold: true, name: 'Arial', sz: 10 }
-        };
+        // Process the XLSX row data
+        const processedRowData = processRowData(rowData);
 
-        // Define the department header style
-        const departmentStyle = {
-            font: { bold: true, name: 'Arial', sz: 10 },
-            fill: { fgColor: { rgb: 'CCFFCC' } },
-            border: {
-                top: { style: 'thin', color: { rgb: 'AAAAAA' } },
-                bottom: { style: 'thin', color: { rgb: 'AAAAAA' } },
-                left: { style: 'thin', color: { rgb: 'AAAAAA' } },
-                right: { style: 'thin', color: { rgb: 'AAAAAA' } }
-            }
-        };
+        // Style the XLSX row data
+        const styledRowData = styleRowData(processedRowData);
     
-        // Define title row style (font size 12, center alignment)
-        const titleStyle = {
-            font: { bold: true, name: 'Arial', sz: 13 },
-            alignment: { horizontal: 'center', vertical: 'center' }
-        };
-    
-        // Apply default font style to all cells
-        for (const cell in newWorksheet) {
-            if (cell[0] === '!') continue; // Skip special properties like '!ref'
-            if (!newWorksheet[cell].s) {
-                newWorksheet[cell].s = {};
-            }
-            newWorksheet[cell].s.font = defaultFont.font;
-        }
-
-        // Apply titleStyle to the first row
-        const titleCellAddress = XLSX.utils.encode_cell({ r: 0, c: 0 });
-        newWorksheet[titleCellAddress] = { t: 's', v: titleRow[0], s: titleStyle };
-    
-        // Merge the first row (title)
-        newWorksheet['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: output[1].length - 1 } }];
-    
-        // Apply headerStyle to the second row (now the header)
-        output[1].forEach((cell, colIndex) => {
-            const cellAddress = XLSX.utils.encode_cell({ r: 1, c: colIndex });
-            newWorksheet[cellAddress].s = headerStyle;
-        });
-    
-        // Apply departmentStyle and merge department rows
-        output.forEach((row, index) => {
-            if (index > 1 && row[0]) {
-                for (let col = 0; col < row.length; col++) {
-                    const cellAddress = XLSX.utils.encode_cell({ r: index, c: col });
-                    newWorksheet[cellAddress].s = departmentStyle;
-                }
-                const mergeRange = {
-                    s: { r: index, c: 0 },
-                    e: { r: index, c: row.length - 1 }
-                };
-                newWorksheet['!merges'].push(mergeRange);
-            }
-        });
-    
-        const today = new Date();
-        const formattedDate = today.toLocaleDateString('en-US').replace(/\//g, '-');
-        const workbookBlob = XLSX.write(newWorkbook, { bookType: 'xlsx', type: 'binary' });
-        const blob = new Blob([s2ab(workbookBlob)], { type: 'application/octet-stream' });
+        const date = (new Date()).toLocaleDateString("en-US").replace(/\//g, "-");
+        const workbookBlob = XLSX.write(styledRowData, {bookType: "xlsx", type: "binary"});
+        const blob = new Blob([stringToArrayBuffer(workbookBlob)], {type: "application/octet-stream"});
         const url = URL.createObjectURL(blob);
     
-        const link = document.getElementById('downloadLink');
-        const footer = document.getElementById('downloadLinkFooter');
+        // Create a temporary anchor element
+        const link = document.createElement("a");
         link.href = url;
-        link.download = `Break Schedule ${formattedDate}.xlsx`;
-        link.classList.remove('d-none');
-        footer.classList.remove('d-none');
-        link.style.display = 'inline-block';
-    };
+        link.download = `Break Schedule ${date}.xlsx`;
+
+        // Programmatically click the link to trigger the download
+        document.body.appendChild(link); // Append the link to the document body
+        link.click(); // Simulate a click on the link
+
+        // Clean up by removing the link and revoking the object URL
+        document.body.removeChild(link); // Remove the link
+        URL.revokeObjectURL(url); // Revoke the object URL
+    };    
     
     reader.readAsArrayBuffer(file);
 });
 
+// Function to style the schedule
+function styleRowData(schedule) {
+    const newWorkbook = XLSX.utils.book_new();
+    const newWorksheet = XLSX.utils.aoa_to_sheet(schedule);
+    XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, "Break Schedule");
+
+    // Set column widths
+    newWorksheet["!cols"] = [
+        {wpx: 40}, {wpx: 150}, {wpx: 120}, {wpx: 100}, {wpx: 80}, {wpx: 80}, {wpx: 80}, {wpx: 80}
+    ];
+
+    // Merge the first row (title)
+    newWorksheet["!merges"] = [
+        {s: {r: 0, c: 0}, e: {r: 0, c: 7}}
+    ];
+
+    schedule.forEach((rowContents, rowIndex) => {
+        rowContents.forEach((colContents, colIndex) => {
+            // Convert row and column indices to cell address, e.g. row 2, col 3 -> "B3"
+            const cellAddress = XLSX.utils.encode_cell({r: rowIndex, c: colIndex});
+
+            // Skip undefined cells
+            if (!newWorksheet[cellAddress]) return;
+
+            // Set all cells to Arial
+            newWorksheet[cellAddress].s = {font: {name: "Arial"}};
+
+            // Center align cells with break information
+            if (colIndex > 3) {
+                newWorksheet[cellAddress].s.alignment = {horizontal: "center"};
+            }
+
+            // Set title row styling to center align, bold, 13 pt
+            if (rowIndex === 0) {
+                newWorksheet[cellAddress].s.font.bold = true;
+                newWorksheet[cellAddress].s.font.sz = 13;
+                newWorksheet[cellAddress].s.alignment = {horizontal: "center"};
+            }
+
+            // Style department rows with blue background
+            if (rowContents[0] && rowIndex > 0) {
+                newWorksheet[cellAddress].s.font.bold = true;
+                newWorksheet[cellAddress].s.fill = {fgColor: {rgb: "CCEEFF"}};
+                newWorksheet[cellAddress].s.border = {
+                    top: {style: "thin", color: {rgb: "AAAAAA"}},
+                    bottom: {style: "thin", color: {rgb: "AAAAAA"}},
+                    left: {style: "thin", color: {rgb: "AAAAAA"}},
+                    right: {style: "thin", color: {rgb: "AAAAAA"}}
+                };
+            }
+        });
+    });
+
+    return newWorkbook;
+}
+
 // Function to process the schedule and return output data
-function processSchedule(rows) {
-    let dept, schedule = [];
+function processRowData(schedule) {
+    let dept, newSchedule = [];
 
     // Loop through each row starting from index 7
-    for (let i = 7; i < rows.length; i++) {
-        // If the first column contains a department name, assign it to 'dept' and skip further processing for that row
-        if (rows[i][0]) {
-            dept = rows[i][0];
+    for (let i = 7; i < schedule.length; i++) {
+        // If the first column contains a department name, assign it to "dept" and skip further processing for that row
+        if (schedule[i][0]) {
+            dept = schedule[i][0];
 
             // Rename "Mgmt Retail" to "Management"
             if (dept === "Mgmt Retail") {
                 dept = "Management";
             }
 
-            // // Remove "Training-" from department names that start with it
-            // if (dept.startsWith("Training-")) {
-            //     dept = dept.replace("Training-", "");
-            // }
+            // Remove "Training-" from department names that start with it
+            if (dept.startsWith("Training-")) {
+                dept = dept.replace("Training-", "");
+            }
             
             continue;
         }
 
         // Split the time interval (column 4) into start and end times, and convert them to minutes
-        let interval = rows[i][4]?.split('-') || [];
+        let interval = schedule[i][4]?.split("-") || [];
         interval = interval.map(bound => timeToMinutes(bound));
 
         // Add each row to the schedule with the department, job, name, and interval
-        schedule.push({
+        newSchedule.push({
             dept: dept,
-            job: rows[i][1],
-            name: formatName(rows[i][2]),
+            job: schedule[i][1],
+            name: formatName(schedule[i][2]),
             interval: interval
         });
     }
 
     // Predefined order of departments
-    const departmentOrder = ['Frontline', 'Hardgoods', 'Softgoods', 'Order Fulfillment', 'Product Movement', 'Shop', 'Management'];
+    const departmentOrder = ["Frontline", "Hardgoods", "Softgoods", "Order Fulfillment", "Product Movement", "Shop", "Management"];
 
     // Function to get the department index for sorting
     function getDeptOrder(dept) {
@@ -160,7 +145,7 @@ function processSchedule(rows) {
     }
 
     // Sort the schedule based on the predefined department order, leaving the rest unsorted
-    schedule.sort((a, b) => {
+    newSchedule.sort((a, b) => {
         let deptOrderA = getDeptOrder(a.dept);
         let deptOrderB = getDeptOrder(b.dept);
         
@@ -173,12 +158,12 @@ function processSchedule(rows) {
             return 0;  // Leave unsorted departments in original order
         }
 
-        return 0;  // Don't sort within predefined departments by name, keep original order
+        return 0;  // Don"t sort within predefined departments by name, keep original order
     });
 
-    // Calculate the earliest and latest times for each person's shift
+    // Calculate the earliest and latest times for each person"s shift
     let shifts = {};
-    schedule.forEach(row => {
+    newSchedule.forEach(row => {
         if (!(row.name in shifts)) shifts[row.name] = [1440, 0]; // Default shift interval (1440 = 24:00)
         shifts[row.name][0] = Math.min(shifts[row.name][0], row.interval[0]); // Earliest start time
         shifts[row.name][1] = Math.max(shifts[row.name][1], row.interval[1]); // Latest end time
@@ -203,11 +188,11 @@ function processSchedule(rows) {
             resolveLoop: while (true) {
                 let currentDept = null;
 
-                // Check if the break overlaps with the employee's scheduled intervals
-                for (let k = 0; k < schedule.length; k++) {
-                    if (schedule[k].name !== name) continue;
-                    if (breaks[name][j] < schedule[k].interval[0] || breaks[name][j] + breakDuration > schedule[k].interval[1]) continue;
-                    currentDept = schedule[k].dept;
+                // Check if the break overlaps with the employee"s scheduled intervals
+                for (let k = 0; k < newSchedule.length; k++) {
+                    if (newSchedule[k].name !== name) continue;
+                    if (breaks[name][j] < newSchedule[k].interval[0] || breaks[name][j] + breakDuration > newSchedule[k].interval[1]) continue;
+                    currentDept = newSchedule[k].dept;
                     break;
                 }
 
@@ -215,16 +200,16 @@ function processSchedule(rows) {
                 if (!["Hardgoods", "Frontline", "Softgoods"].includes(currentDept)) break;
 
                 // Adjust breaks to avoid overlap with others in the same department
-                for (let k = 0; k < schedule.length; k++) {
-                    if (schedule[k].name === name || schedule[k].dept !== currentDept) continue;
-                    if (!(schedule[k].name in breaks)) continue;
+                for (let k = 0; k < newSchedule.length; k++) {
+                    if (newSchedule[k].name === name || newSchedule[k].dept !== currentDept) continue;
+                    if (!(newSchedule[k].name in breaks)) continue;
 
-                    for (let l = 0; l < breaks[schedule[k].name].length; l++) {
+                    for (let l = 0; l < breaks[newSchedule[k].name].length; l++) {
                         let breakDuration2 = l % 2 ? 30 : 15;
 
                         // Check if breaks overlap
-                        if (breaks[name][j] + breakDuration > breaks[schedule[k].name][l] &&
-                            breaks[name][j] < breaks[schedule[k].name][l] + breakDuration2) {
+                        if (breaks[name][j] + breakDuration > breaks[newSchedule[k].name][l] &&
+                            breaks[name][j] < breaks[newSchedule[k].name][l] + breakDuration2) {
 
                             let originalBreak = shifts[name][0] + 120 * (j + 1); // Original break time
                             timesDelayed++;
@@ -247,17 +232,17 @@ function processSchedule(rows) {
         }
     }
 
-    // Extract special breaks for 'Misc Events'
+    // Extract special breaks for "Misc Events"
     let news_breaks = {};
-    schedule.forEach(row => {
-        if (row.job === 'Misc Events') news_breaks[row.name] = row.interval[0];
+    newSchedule.forEach(row => {
+        if (row.job === "Misc Events") news_breaks[row.name] = row.interval[0];
     });
 
-    // Remove duplicate rows for 'Management' department, keeping only unique entries by name
+    // Remove duplicate rows for "Management" department, keeping only unique entries by name
     let uniqueRows = [];
     let seen = new Set();
-    schedule.forEach(row => {
-        if (row.dept === 'Management' && row.job === 'Management') {
+    newSchedule.forEach(row => {
+        if (row.dept === "Management" && row.job === "Management") {
             const key = row.name;
             if (!seen.has(key)) {
                 seen.add(key);
@@ -267,44 +252,44 @@ function processSchedule(rows) {
             uniqueRows.push(row);
         }
     });
-    schedule = uniqueRows;
+    newSchedule = uniqueRows;
 
     // Update shift intervals for management jobs to cover the entire shift
-    schedule.forEach(row => {
-        if (row.job === 'Management') {
+    newSchedule.forEach(row => {
+        if (row.job === "Management") {
             row.interval = shifts[row.name];
         }
     });
 
-    // Remove rows related to 'Misc Events' or 'Meeting'
-    schedule = schedule.filter(row => row.job !== 'Misc Events' && row.job !== 'Meeting');
+    // Remove rows related to "Misc Events" or "Meeting"
+    newSchedule = newSchedule.filter(row => row.job !== "Misc Events" && row.job !== "Meeting");
 
     // Create the output array for Excel
-    const output = [];
-    output.push(['Dept.', 'Job', 'Name', 'Shift', 'News Break', '15', '30', '15']);
+    const output = [["REI Daily Schedule"]];
+    // output.push(["Dept.", "Job", "Name", "Shift"]);
 
     // Track printed breaks to avoid duplicate entries
     let breaksPrinted = new Set();
-    schedule.forEach(row => {
+    newSchedule.forEach(row => {
         if (row.dept !== dept) {
             dept = row.dept;
-            output.push([dept, '', '', '', '', '', '', '']); // Add department header row
+            output.push([dept, "", "", "", "15", "30", "15", "News"]); // Add department header row
         }
-        let intervalStr = row.interval.map(bound => minutesToTime(bound)).join('-'); // Format shift interval
-        let rowOutput = ['', row.job, row.name, intervalStr];
+        let intervalStr = row.interval.map(bound => minutesToTime(bound)).join("-"); // Format shift interval
+        let rowOutput = ["", row.job, row.name, intervalStr];
 
         const key = row.name;
         if (!breaksPrinted.has(key)) {
             breaksPrinted.add(key);
-            // Add special breaks or empty cells for the row
-            if (news_breaks[row.name]) rowOutput.push(minutesToTime(news_breaks[row.name]));
-            else rowOutput.push('');
-
-            // Add regular breaks (rest, meal, etc.)
+            // Add regular breaks to each row (15, 30, 15)
             for (let i = 0; i < 3; i++) {
                 if (breaks[row.name][i]) rowOutput.push(minutesToTime(breaks[row.name][i]));
-                else rowOutput.push('');
+                else rowOutput.push("x");
             }
+
+            // Add news break to each row
+            if (news_breaks[row.name]) rowOutput.push(minutesToTime(news_breaks[row.name]));
+            else rowOutput.push("x");
         }
 
         output.push(rowOutput);
@@ -314,86 +299,42 @@ function processSchedule(rows) {
 }
 
 // Helper function to convert string to ArrayBuffer
-function s2ab(s) {
-    const buf = new ArrayBuffer(s.length);
-    const view = new Uint8Array(buf);
-    for (let i = 0; i < s.length; i++) {
-        view[i] = s.charCodeAt(i) & 0xFF;
+function stringToArrayBuffer(string) {
+    const buffer = new ArrayBuffer(string.length);
+    const view = new Uint8Array(buffer);
+    for (let i = 0; i < string.length; i ++) {
+        view[i] = string.charCodeAt(i) & 0xFF;
     }
-    return buf;
+    return buffer;
 }
 
 // Helper function to convert time strings to minutes since midnight (e.g. "9:00AM" -> 540)
 function timeToMinutes(time) {
-    return ((+time.split(':')[0] % 12) + (time.includes('PM') ? 12 : 0)) * 60 + +time.split(':')[1].slice(0, 2);
+    return ((+time.split(":")[0] % 12) + (time.includes("PM") ? 12 : 0)) * 60 + +time.split(":")[1].slice(0, 2);
 }
 
 // Helper function to convert minutes since midnight to time strings (e.g. 540 -> "9:00AM")
 function minutesToTime(minutes) {
-    return `${(minutes / 60 + 11) % 12 + 1 | 0}:${(minutes % 60).toString().padStart(2, '0')}${minutes < 720 ? 'AM' : 'PM'}`;
+    return `${(minutes / 60 + 11) % 12 + 1 | 0}:${(minutes % 60).toString().padStart(2, "0")}${minutes < 720 ? "AM" : "PM"}`;
 }
 
-// Helper function to properly capitalize a word in a name (e.g., "o'neil" -> "O'Neil", "mcdonald" -> "McDonald")
+// Helper function to properly format names
 function formatName(name) {
-    return name.split(' ').map(word => {
-        let result = '';
-        let capitalizeNext = true;
-        
-        for (let i = 0; i < word.length; i++) {
-            let char = word.charAt(i);
-            
-            // Handle common prefixes like 'Mc', 'Mac', 'O', 'D'
-            if (i > 0) {
-                if (word.startsWith('Mc') && i === 2 && /[a-zA-Z]/.test(char)) {
-                    result += char.toUpperCase();
-                    capitalizeNext = false;
-                    continue;
-                }
-                if (word.startsWith('Mac') && i === 3 && /[a-zA-Z]/.test(char)) {
-                    result += char.toUpperCase();
-                    capitalizeNext = false;
-                    continue;
-                }
-                if (word.startsWith("O'") && i === 2 && /[a-zA-Z]/.test(char)) {
-                    result += char.toUpperCase();
-                    capitalizeNext = false;
-                    continue;
-                }
-                if (word.startsWith("D'") && i === 2 && /[a-zA-Z]/.test(char)) {
-                    result += char.toUpperCase();
-                    capitalizeNext = false;
-                    continue;
-                }
-                if (word.startsWith("Al-") && i === 3 && /[a-zA-Z]/.test(char)) {
-                    result += char.toUpperCase();
-                    capitalizeNext = false;
-                    continue;
-                }
-                if (word.startsWith("El-") && i === 3 && /[a-zA-Z]/.test(char)) {
-                    result += char.toUpperCase();
-                    capitalizeNext = false;
-                    continue;
-                }
-                if (word.startsWith("St.") && i === 3 && /[a-zA-Z]/.test(char)) {
-                    result += char.toUpperCase();
-                    capitalizeNext = false;
-                    continue;
-                }
-            }
+    const words = name.split(" ").map(word => {
+        // Set the first letter of the word to upper case and the rest lower case
+        word = word[0].toUpperCase() + word.slice(1).toLowerCase();
 
-            // Capitalize the current character if needed and reset capitalizeNext
-            if (capitalizeNext && /[a-zA-Z]/.test(char)) {
-                result += char.toUpperCase();
-                capitalizeNext = false;
-            } else {
-                result += char.toLowerCase();
-            }
-
-            // After spaces, hyphens, or apostrophes, we need to capitalize the next character
-            if (char === '-' || char === "'" || char === " ") {
-                capitalizeNext = true;
-            }
+        // If word starts with "Mc" or "O'", capitalize the third letter of the word
+        if (word.startsWith("Mc") || word.startsWith("O'")) {
+            // Create a new string with the third letter capitalized
+            word = word.slice(0, 2) + word[2].toUpperCase() + word.slice(3);
         }
-        return result;
-    }).join(' ');
+
+        return word; // Ensure to return the modified word
+    });
+
+    // Remove middle initial if present
+    const formattedWords = words.slice(0, 2); // renamed for clarity
+    const formattedName = formattedWords.join(" ");
+    return formattedName;
 }
