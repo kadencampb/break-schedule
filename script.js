@@ -182,7 +182,7 @@ function processRowData(schedule) {
 
         // Add breaks at 4 hours and 6 hours if the shift is long enough
         if (shiftDuration >= 300) breaks[name].push(shifts[name][0] + 240);
-        if (shiftDuration >= 390) breaks[name].push(shifts[name][0] + 360);
+        if (shiftDuration >= 420) breaks[name].push(shifts[name][0] + 360);
 
         // Adjust breaks if they overlap with scheduled intervals
         for (let j = 0; j < breaks[name].length; j++) {
