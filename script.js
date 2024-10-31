@@ -267,7 +267,7 @@ function processRowData(schedule) {
     });
 
     // Remove rows related to "Misc Events" or "Meeting"
-    newSchedule = newSchedule.filter(row => row.job !== "Misc Events" && row.job !== "Meeting");
+    newSchedule = newSchedule.filter(row => row.job !== "Misc Events");
 
     // Create the output array for Excel
     const output = [["REI Daily Schedule"]];
