@@ -1,4 +1,3 @@
-// Test edit 2
 document.getElementById("selectFileButton").addEventListener("click", () => {
     document.getElementById("fileInput").click();
 });
@@ -61,11 +60,19 @@ function styleRowData(schedule) {
     ];
 
     // Merge the first row (title)
-    newWorksheet["!merges"] = [
+    let merges = [
         {s: {r: 0, c: 0}, e: {r: 0, c: 7}}
     ];
 
     schedule.forEach((rowContents, rowIndex) => {
+        if (rowContents[0] && rowIndex > 0) {
+            // Add merge range for department rows (merge columns 1-4)
+            merges.push({
+                s: {r: rowIndex, c: 0},
+                e: {r: rowIndex, c: 3}
+            });
+        }
+
         rowContents.forEach((colContents, colIndex) => {
             // Convert row and column indices to cell address, e.g. row 2, col 3 -> "B3"
             const cellAddress = XLSX.utils.encode_cell({r: rowIndex, c: colIndex});
@@ -74,7 +81,7 @@ function styleRowData(schedule) {
             if (!newWorksheet[cellAddress]) return;
 
             // Set all cells to Arial
-            newWorksheet[cellAddress].s = {font: {name: "Arial"}};
+            newWorksheet[cellAddress].s = {font: {name: "Aptos Narrow (Body)"}};
 
             // Center align cells with break information
             if (colIndex > 3) {
@@ -102,12 +109,14 @@ function styleRowData(schedule) {
         });
     });
 
+    newWorksheet["!merges"] = merges;
+
     return newWorkbook;
 }
 
 // Function to process the schedule and return output data
 function processRowData(schedule) {
-    let dept, newSchedule = [];
+    let dept, newSchedule = [], shiftSegments = [];
 
     // Loop through each row starting from index 7
     for (let i = 7; i < schedule.length; i++) {
@@ -128,6 +137,12 @@ function processRowData(schedule) {
             continue;
         }
 
+        // If there is no name, skip that row, otherwise format the name
+        if (!schedule[i][2]) {
+            continue;
+        }
+        let name = formatName(schedule[i][2]);
+
         // Split the time interval (column 4) into start and end times, and convert them to minutes
         let interval = schedule[i][4]?.split("-") || [];
         interval = interval.map(bound => timeToMinutes(bound));
@@ -136,7 +151,19 @@ function processRowData(schedule) {
         newSchedule.push({
             dept: dept,
             job: schedule[i][1],
-            name: formatName(schedule[i][2]),
+            name: name,
+            interval: interval
+        });
+
+        // Accumulate shift segments by employee name
+        if (!shiftSegments[name]) {
+            shiftSegments[name] = []; // Initialize the array if it doesn't exist
+        }
+
+        // Push the shift segment (department, job, interval) into the array for this employee
+        shiftSegments[name].push({
+            dept: dept,
+            job: schedule[i][1],
             interval: interval
         });
     }
@@ -175,18 +202,58 @@ function processRowData(schedule) {
         shifts[row.name][1] = Math.max(shifts[row.name][1], row.interval[1]); // Latest end time
     });
 
-    // Generate breaks based on shift duration
     let breaks = {};
+
+    // Add logic to detect a lunch break based on a 30-minute gap between segments (between 3-5 hours into the shift)
+    for (let name in shiftSegments) {
+        let segments = shiftSegments[name];
+        
+        // Sort the segments for each employee by start time
+        segments.sort((a, b) => a.interval[0] - b.interval[0]);
+
+        // console.log(`${name}'s shift segments are: `);
+        // for (let i = 0; i < segments.length; i ++) {
+        //     console.log(`\t${segments[i].job}: ${minutesToTime(segments[i].interval[0])}-${minutesToTime(segments[i].interval[1])}`);
+        // }
+
+        for (let i = 0; i < segments.length - 1; i ++) {
+            if (segments[i].interval[1] >= shifts[name][0] + 240 && segments[i + 1].interval[0] == segments[i].interval[1] + 30) {
+                if (!breaks[name]) {
+                    breaks[name] = [];
+                }
+                breaks[name][1] = segments[i].interval[1];
+                // console.log(`FOUND LUNCH AT ${segments[i].interval[1]}`);
+            }
+        }
+    }
+
+    // First generate breaks for employees with lunch breaks already assigned in UKG
     for (let name in shifts) {
-        breaks[name] = [shifts[name][0] + 120]; // First break at 2 hours
+        // If the employee does not have any breaks already, skip that employee
+        if (!breaks[name]) {
+            continue;
+        }
+
+        // If the employee does not have a lunch break already, skip that employee
+        if (!breaks[name][1]) {
+            continue;
+        }
+
+        // Add a first rest break at 2 hours after the start time
+        breaks[name][0] = shifts[name][0] + 120;
+
         let shiftDuration = shifts[name][1] - shifts[name][0];
 
-        // Add breaks at 4 hours and 6 hours if the shift is long enough
-        if (shiftDuration >= 300) breaks[name].push(shifts[name][0] + 240);
-        if (shiftDuration >= 420) breaks[name].push(shifts[name][0] + 360);
+        // If the shift duration is equal to or greater than 7 hours, add a second rest break at 6 hours after the start time, but no later than 6:45 PM
+        if (shiftDuration >= 420) breaks[name][2] = Math.min(shifts[name][0] + 360, 1125);
 
-        // Adjust breaks if they overlap with scheduled intervals
+        // Adjust breaks if they overlap with other breaks in the same department
         for (let j = 0; j < breaks[name].length; j++) {
+            // If the break is a meal break, skip that break
+            if (j == 1) {
+                continue;
+            }
+
             let breakDuration = j % 2 ? 30 : 15; // 30 minutes for second break, 15 minutes for the first
             let timesDelayed = 0;
 
@@ -224,7 +291,81 @@ function processRowData(schedule) {
                             breaks[name][j] = originalBreak - (15 * Math.ceil(timesDelayed / 2) * Math.pow(-1, timesDelayed));
 
                             // If break has been delayed too many times, log an error and stop adjusting
-                            if (timesDelayed > 6) {
+                            if (timesDelayed > 4) {
+                                console.error(`ERROR: ${name} in ${currentDept} at ${minutesToTime(breaks[name][j])}`);
+                                break resolveLoop;
+                            }
+
+                            continue resolveLoop; // Continue adjusting breaks
+                        }
+                    }
+                }
+                break resolveLoop; // Exit loop if no more adjustments are needed
+            }
+        }
+    }
+
+    // Then, generate breaks for the rest of the employees (employees not assigned a lunch in UKG)
+    for (let name in shifts) {
+        // If the employee 
+        if (breaks[name]) {
+            continue;
+        }
+
+        // Initialize breaks
+        breaks[name] = [];
+
+        let shiftDuration = shifts[name][1] - shifts[name][0];
+
+        // Add a first rest break at 2 hours after the start time
+        breaks[name][0] = shifts[name][0] + 120;
+
+        // If the shift duration is equal to or greater than 5 hours, add a meal break at 4 hours after the start time
+        if (shiftDuration >= 300) breaks[name][1] = shifts[name][0] + 240;
+
+        // If the shift duration is equal to or greater than 7 hours, add a second rest break at 6 hours after the start time, but no later than 6:45 PM
+        if (shiftDuration >= 420) breaks[name][2] = Math.min(shifts[name][0] + 360, 1125);
+
+        // Adjust breaks if they overlap with other breaks in the same department
+        for (let j = 0; j < breaks[name].length; j++) {
+            let breakDuration = j % 2 ? 30 : 15; // 30 minutes for second break, 15 minutes for the first
+            let timesDelayed = 0;
+
+            // Resolve conflicts with other schedule intervals
+            resolveLoop: while (true) {
+                let currentDept = null;
+
+                // Check if the break overlaps with the employee's scheduled intervals
+                for (let k = 0; k < newSchedule.length; k++) {
+                    if (newSchedule[k].name !== name) continue;
+                    if (breaks[name][j] < newSchedule[k].interval[0] || breaks[name][j] + breakDuration > newSchedule[k].interval[1]) continue;
+                    currentDept = newSchedule[k].dept;
+                    break;
+                }
+
+                // Skip break adjustment if the employee is not in certain departments
+                if (!["Hardgoods", "Frontline", "Softgoods"].includes(currentDept)) break;
+
+                // Adjust breaks to avoid overlap with others in the same department
+                for (let k = 0; k < newSchedule.length; k++) {
+                    if (newSchedule[k].name === name || newSchedule[k].dept !== currentDept) continue;
+                    if (!(newSchedule[k].name in breaks)) continue;
+
+                    for (let l = 0; l < breaks[newSchedule[k].name].length; l++) {
+                        let breakDuration2 = l % 2 ? 30 : 15;
+
+                        // Check if breaks overlap
+                        if (breaks[name][j] + breakDuration > breaks[newSchedule[k].name][l] &&
+                            breaks[name][j] < breaks[newSchedule[k].name][l] + breakDuration2) {
+
+                            let originalBreak = shifts[name][0] + 120 * (j + 1); // Original break time
+                            timesDelayed++;
+
+                            // Adjust break by delaying or advancing it by 15-minute intervals
+                            breaks[name][j] = originalBreak - (15 * Math.ceil(timesDelayed / 2) * Math.pow(-1, timesDelayed));
+
+                            // If break has been delayed too many times, log an error and stop adjusting
+                            if (timesDelayed > 4) {
                                 console.error(`ERROR: ${name} in ${currentDept} at ${minutesToTime(breaks[name][j])}`);
                                 break resolveLoop;
                             }
