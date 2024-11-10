@@ -1,3 +1,6 @@
+( ) settings page
+
+
 (x) center align breaks
 (x) news break to the right
 (x) break headers in each row

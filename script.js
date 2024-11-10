@@ -1,51 +1,55 @@
+// Trigger file input when the Select File button is clicked
 document.getElementById("selectFileButton").addEventListener("click", () => {
     document.getElementById("fileInput").click();
 });
 
+// Store the file for later use
+let selectedFile;
+
 document.getElementById("fileInput").addEventListener("change", (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
+    selectedFile = event.target.files[0]; // Store the selected file
+    const link = document.getElementById("downloadLink");
+    link.classList.remove("d-none"); // Show the download link
+    // Show the download button footer after file selection
+    const footer = document.getElementById("downloadLinkFooter");
+    footer.classList.remove("d-none");
+});
+
+// Trigger processing and downloading when the Download button is clicked
+document.getElementById("downloadLink").addEventListener("click", () => {
+    if (!selectedFile) {
+        alert("Please select a file first.");
+        return;
+    }
 
     const reader = new FileReader();
 
     reader.onload = (event) => {
-        // Read the data from the selected file into an XLSX workbook
-        const workbook = XLSX.read(new Uint8Array(event.target.result), {type: "array"});
-    
+        // Read data from the selected file into an XLSX workbook
+        const workbook = XLSX.read(new Uint8Array(event.target.result), { type: "array" });
+
         // Convert the first worksheet from the XLSX workbook into JSON row data
-        const rowData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
+        const rowData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
 
-        // Process the XLSX row data
+        // Process and style the data
         const processedRowData = processRowData(rowData);
-
-        // Style the XLSX row data
         const styledRowData = styleRowData(processedRowData);
-    
-        const date = (new Date()).toLocaleDateString("en-US").replace(/\//g, "-");
-        const workbookBlob = XLSX.write(styledRowData, {bookType: "xlsx", type: "binary"});
-        const blob = new Blob([stringToArrayBuffer(workbookBlob)], {type: "application/octet-stream"});
+
+        const date = new Date().toLocaleDateString("en-US").replace(/\//g, "-");
+        const workbookBlob = XLSX.write(styledRowData, { bookType: "xlsx", type: "binary" });
+        const blob = new Blob([stringToArrayBuffer(workbookBlob)], { type: "application/octet-stream" });
         const url = URL.createObjectURL(blob);
-    
-        // // Create a temporary anchor element
-        // const link = document.createElement("a");
 
-        const link = document.getElementById("downloadLink");
-        const footer = document.getElementById("downloadLinkFooter");
-        link.href = url;
-        link.download = `Break Schedule ${date}.xlsx`;
-        link.classList.remove("d-none");
-        footer.classList.remove("d-none");  
+        // Update the hidden download link with the generated file URL and filename
+        const hiddenDownloadLink = document.getElementById("hiddenDownloadLink");
+        hiddenDownloadLink.href = url;
+        hiddenDownloadLink.download = `Break Schedule ${date}.xlsx`;
 
-        // // Programmatically click the link to trigger the download
-        // document.body.appendChild(link); // Append the link to the document body
-        link.click(); // Simulate a click on the link
+        // Simulate a click on the hidden download link
+        hiddenDownloadLink.click();
+    };
 
-        // // Clean up by removing the link and revoking the object URL
-        // document.body.removeChild(link); // Remove the link
-        // URL.revokeObjectURL(url); // Revoke the object URL
-    };    
-    
-    reader.readAsArrayBuffer(file);
+    reader.readAsArrayBuffer(selectedFile);
 });
 
 // Function to style the schedule
@@ -56,54 +60,54 @@ function styleRowData(schedule) {
 
     // Set column widths
     newWorksheet["!cols"] = [
-        {wpx: 40}, {wpx: 150}, {wpx: 120}, {wpx: 100}, {wpx: 80}, {wpx: 80}, {wpx: 80}, {wpx: 80}
+        { wpx: 40 }, { wpx: 150 }, { wpx: 120 }, { wpx: 100 }, { wpx: 80 }, { wpx: 80 }, { wpx: 80 }, { wpx: 80 }
     ];
 
     // Merge the first row (title)
     let merges = [
-        {s: {r: 0, c: 0}, e: {r: 0, c: 7}}
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }
     ];
 
     schedule.forEach((rowContents, rowIndex) => {
         if (rowContents[0] && rowIndex > 0) {
             // Add merge range for department rows (merge columns 1-4)
             merges.push({
-                s: {r: rowIndex, c: 0},
-                e: {r: rowIndex, c: 3}
+                s: { r: rowIndex, c: 0 },
+                e: { r: rowIndex, c: 3 }
             });
         }
 
         rowContents.forEach((colContents, colIndex) => {
             // Convert row and column indices to cell address, e.g. row 2, col 3 -> "B3"
-            const cellAddress = XLSX.utils.encode_cell({r: rowIndex, c: colIndex});
+            const cellAddress = XLSX.utils.encode_cell({ r: rowIndex, c: colIndex });
 
             // Skip undefined cells
             if (!newWorksheet[cellAddress]) return;
 
             // Set all cells to Arial
-            newWorksheet[cellAddress].s = {font: {name: "Aptos Narrow (Body)"}};
+            newWorksheet[cellAddress].s = { font: { name: "Aptos Narrow (Body)" } };
 
             // Center align cells with break information
             if (colIndex > 3) {
-                newWorksheet[cellAddress].s.alignment = {horizontal: "center"};
+                newWorksheet[cellAddress].s.alignment = { horizontal: "center" };
             }
 
             // Set title row styling to center align, bold, 13 pt
             if (rowIndex === 0) {
                 newWorksheet[cellAddress].s.font.bold = true;
                 newWorksheet[cellAddress].s.font.sz = 13;
-                newWorksheet[cellAddress].s.alignment = {horizontal: "center"};
+                newWorksheet[cellAddress].s.alignment = { horizontal: "center" };
             }
 
             // Style department rows with blue background
             if (rowContents[0] && rowIndex > 0) {
                 newWorksheet[cellAddress].s.font.bold = true;
-                newWorksheet[cellAddress].s.fill = {fgColor: {rgb: "CCEEFF"}};
+                newWorksheet[cellAddress].s.fill = { fgColor: { rgb: "CCEEFF" } };
                 newWorksheet[cellAddress].s.border = {
-                    top: {style: "thin", color: {rgb: "AAAAAA"}},
-                    bottom: {style: "thin", color: {rgb: "AAAAAA"}},
-                    left: {style: "thin", color: {rgb: "AAAAAA"}},
-                    right: {style: "thin", color: {rgb: "AAAAAA"}}
+                    top: { style: "thin", color: { rgb: "AAAAAA" } },
+                    bottom: { style: "thin", color: { rgb: "AAAAAA" } },
+                    left: { style: "thin", color: { rgb: "AAAAAA" } },
+                    right: { style: "thin", color: { rgb: "AAAAAA" } }
                 };
             }
         });
@@ -133,7 +137,7 @@ function processRowData(schedule) {
             if (dept.startsWith("Training-")) {
                 dept = dept.replace("Training-", "");
             }
-            
+
             continue;
         }
 
@@ -181,11 +185,11 @@ function processRowData(schedule) {
     newSchedule.sort((a, b) => {
         let deptOrderA = getDeptOrder(a.dept);
         let deptOrderB = getDeptOrder(b.dept);
-        
+
         if (deptOrderA !== deptOrderB) {
             return deptOrderA - deptOrderB;  // Sort by department order if they differ
         }
-        
+
         // Maintain the original order within departments for unsorted departments
         if (deptOrderA === departmentOrder.length) {
             return 0;  // Leave unsorted departments in original order
@@ -207,22 +211,16 @@ function processRowData(schedule) {
     // Add logic to detect a lunch break based on a 30-minute gap between segments (between 3-5 hours into the shift)
     for (let name in shiftSegments) {
         let segments = shiftSegments[name];
-        
+
         // Sort the segments for each employee by start time
         segments.sort((a, b) => a.interval[0] - b.interval[0]);
 
-        // console.log(`${name}'s shift segments are: `);
-        // for (let i = 0; i < segments.length; i ++) {
-        //     console.log(`\t${segments[i].job}: ${minutesToTime(segments[i].interval[0])}-${minutesToTime(segments[i].interval[1])}`);
-        // }
-
-        for (let i = 0; i < segments.length - 1; i ++) {
+        for (let i = 0; i < segments.length - 1; i++) {
             if (segments[i].interval[1] >= shifts[name][0] + 240 && segments[i + 1].interval[0] == segments[i].interval[1] + 30) {
                 if (!breaks[name]) {
                     breaks[name] = [];
                 }
                 breaks[name][1] = segments[i].interval[1];
-                // console.log(`FOUND LUNCH AT ${segments[i].interval[1]}`);
             }
         }
     }
@@ -244,8 +242,10 @@ function processRowData(schedule) {
 
         let shiftDuration = shifts[name][1] - shifts[name][0];
 
-        // If the shift duration is equal to or greater than 7 hours, add a second rest break at 6 hours after the start time, but no later than 6:45 PM
-        if (shiftDuration >= 420) breaks[name][2] = Math.min(shifts[name][0] + 360, 1125);
+        let maxBreakStartTime = timeToMinutes(document.getElementById('maxBreakStartTimeInput').value);
+
+        // If the shift duration is equal to or greater than 7 hours, add a second rest break at 6 hours after the start time
+        if (shiftDuration >= 420) breaks[name][2] = Math.min(shifts[name][0] + 360, maxBreakStartTime);
 
         // Adjust breaks if they overlap with other breaks in the same department
         for (let j = 0; j < breaks[name].length; j++) {
@@ -269,8 +269,11 @@ function processRowData(schedule) {
                     break;
                 }
 
-                // Skip break adjustment if the employee is not in certain departments
-                if (!["Hardgoods", "Frontline", "Softgoods"].includes(currentDept)) break;
+                // Retrieve selected departments for break adjustment
+                const selectedDepartments = getSelectedDepartments();
+
+                // Skip break adjustment if the employee is not in one of the selected departments
+                if (!selectedDepartments.includes(currentDept)) break;
 
                 // Adjust breaks to avoid overlap with others in the same department
                 for (let k = 0; k < newSchedule.length; k++) {
@@ -288,10 +291,10 @@ function processRowData(schedule) {
                             timesDelayed++;
 
                             // Adjust break by delaying or advancing it by 15-minute intervals
-                            breaks[name][j] = originalBreak - (15 * Math.ceil(timesDelayed / 2) * Math.pow(-1, timesDelayed));
+                            breaks[name][j] = Math.min(maxBreakStartTime, originalBreak - (15 * Math.ceil(timesDelayed / 2) * Math.pow(-1, timesDelayed)));
 
                             // If break has been delayed too many times, log an error and stop adjusting
-                            if (timesDelayed > 4) {
+                            if (timesDelayed > 6) {
                                 console.error(`ERROR: ${name} in ${currentDept} at ${minutesToTime(breaks[name][j])}`);
                                 break resolveLoop;
                             }
@@ -323,8 +326,10 @@ function processRowData(schedule) {
         // If the shift duration is equal to or greater than 5 hours, add a meal break at 4 hours after the start time
         if (shiftDuration >= 300) breaks[name][1] = shifts[name][0] + 240;
 
-        // If the shift duration is equal to or greater than 7 hours, add a second rest break at 6 hours after the start time, but no later than 6:45 PM
-        if (shiftDuration >= 420) breaks[name][2] = Math.min(shifts[name][0] + 360, 1125);
+        let maxBreakStartTime = timeToMinutes(document.getElementById('maxBreakStartTimeInput').value);
+
+        // If the shift duration is equal to or greater than 7 hours, add a second rest break at 6 hours after the start time
+        if (shiftDuration >= 420) breaks[name][2] = Math.min(shifts[name][0] + 360, maxBreakStartTime);
 
         // Adjust breaks if they overlap with other breaks in the same department
         for (let j = 0; j < breaks[name].length; j++) {
@@ -343,8 +348,11 @@ function processRowData(schedule) {
                     break;
                 }
 
-                // Skip break adjustment if the employee is not in certain departments
-                if (!["Hardgoods", "Frontline", "Softgoods"].includes(currentDept)) break;
+                // Retrieve selected departments for break adjustment
+                const selectedDepartments = getSelectedDepartments();
+
+                // Skip break adjustment if the employee is not in one of the selected departments
+                if (!selectedDepartments.includes(currentDept)) break;
 
                 // Adjust breaks to avoid overlap with others in the same department
                 for (let k = 0; k < newSchedule.length; k++) {
@@ -362,10 +370,10 @@ function processRowData(schedule) {
                             timesDelayed++;
 
                             // Adjust break by delaying or advancing it by 15-minute intervals
-                            breaks[name][j] = originalBreak - (15 * Math.ceil(timesDelayed / 2) * Math.pow(-1, timesDelayed));
+                            breaks[name][j] = Math.min(maxBreakStartTime, originalBreak - (15 * Math.ceil(timesDelayed / 2) * Math.pow(-1, timesDelayed)));
 
                             // If break has been delayed too many times, log an error and stop adjusting
-                            if (timesDelayed > 4) {
+                            if (timesDelayed > 6) {
                                 console.error(`ERROR: ${name} in ${currentDept} at ${minutesToTime(breaks[name][j])}`);
                                 break resolveLoop;
                             }
@@ -449,7 +457,7 @@ function processRowData(schedule) {
 function stringToArrayBuffer(string) {
     const buffer = new ArrayBuffer(string.length);
     const view = new Uint8Array(buffer);
-    for (let i = 0; i < string.length; i ++) {
+    for (let i = 0; i < string.length; i++) {
         view[i] = string.charCodeAt(i) & 0xFF;
     }
     return buffer;
@@ -457,7 +465,9 @@ function stringToArrayBuffer(string) {
 
 // Helper function to convert time strings to minutes since midnight (e.g. "9:00AM" -> 540)
 function timeToMinutes(time) {
-    return ((+time.split(":")[0] % 12) + (time.includes("PM") ? 12 : 0)) * 60 + +time.split(":")[1].slice(0, 2);
+    return (time.includes("AM") || time.includes("PM")
+        ? ((+time.split(":")[0] % 12) + (time.includes("PM") ? 12 : 0)) * 60 + +time.split(":")[1].slice(0, 2)
+        : +time.split(":")[0] * 60 + +time.split(":")[1]);
 }
 
 // Helper function to convert minutes since midnight to time strings (e.g. 540 -> "9:00AM")
@@ -484,4 +494,17 @@ function formatName(name) {
     const formattedWords = words.slice(0, 2); // renamed for clarity
     const formattedName = formattedWords.join(" ");
     return formattedName;
+}
+
+function getSelectedDepartments() {
+    const selectedDepartments = [];
+    const departmentCheckboxes = document.querySelectorAll('#departmentOverlap .form-check-input');
+
+    departmentCheckboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+            selectedDepartments.push(checkbox.nextElementSibling.textContent.trim());
+        }
+    });
+
+    return selectedDepartments;
 }

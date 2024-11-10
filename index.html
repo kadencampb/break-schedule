@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,22 +9,73 @@
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="container mt-5">
         <div class="card shadow">
-            <div class="card-header bg-primary text-white">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h4 class="card-title mb-0">Break Schedule Tool</h4>
             </div>
+
             <div class="card-body">
-                <p>Select the custom daily schedule (.xlsx) from UKG to process</p>
-                <!-- Button to select the file -->
-                <button id="selectFileButton" class="btn btn-primary">Choose (.xlsx) file to process</button>
-                <!-- Hidden file input for XLSX file -->
+                <p class="mb-4">Select the custom daily schedule (.xlsx) from UKG to process</p>
+                <button id="selectFileButton" class="btn btn-primary mb-4">Choose (.xlsx) file to process</button>
                 <input type="file" id="fileInput" accept=".xlsx" class="d-none" />
+
+                <h5 class="mb-3">Settings</h5>
+
+                <!-- Time-based Break Setting -->
+                <div class="form-group d-flex align-items-center mb-3" id="maxBreakStartTime">
+                    <label for="maxBreakStartTimeInput" class="mr-3 mb-0">Don't allow breaks after</label>
+                    <input type="time" id="maxBreakStartTimeInput" class="form-control" value="20:00"
+                        style="width: 120px;">
+                </div>
+
+                <!-- Department Overlap Prevention Setting -->
+                <div class="form-group" id="departmentOverlap">
+                    <label class="d-block mb-2">Prevent overlapping breaks in</label>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="hardgoods" checked>
+                                <label class="form-check-label" for="hardgoods">Hardgoods</label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="softgoods" checked>
+                                <label class="form-check-label" for="softgoods">Softgoods</label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="frontline" checked>
+                                <label class="form-check-label" for="frontline">Frontline</label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="management">
+                                <label class="form-check-label" for="management">Management</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="orderFulfillment">
+                                <label class="form-check-label" for="orderFulfillment">Order Fulfillment</label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="shop">
+                                <label class="form-check-label" for="shop">Shop</label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="productMovement">
+                                <label class="form-check-label" for="productMovement">Product Movement</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
+
             <div id="downloadLinkFooter" class="card-footer text-center d-none">
-                <a id="downloadLink" class="btn btn-success d-none" download="Schedule.csv">Download again</a>
+                <a id="downloadLink" class="btn btn-success d-none" download="Schedule.csv">Download</a>
             </div>
+            <!-- Hidden Link for Triggering the Download -->
+            <a id="hiddenDownloadLink" style="display: none;"></a>
         </div>
     </div>
 
@@ -35,4 +87,5 @@
     <!-- Link to the external script.js file -->
     <script src="script.js"></script>
 </body>
+
 </html>
