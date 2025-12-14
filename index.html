@@ -24,15 +24,87 @@
 
                 <h5 class="mb-3">Settings</h5>
 
-                <div class="form-group d-flex align-items-center mb-3" id="maxBreakStartTime">
-                    <label for="maxBreakStartTimeInput" class="mr-3 mb-0">Don't allow breaks after</label>
-                    <input type="time" id="maxBreakStartTimeInput" class="form-control" value="20:00"
-                        style="width: 120px;">
+                <!-- Operating Hours Settings (Collapsible) -->
+                <div class="card mb-3">
+                    <div class="card-header bg-light" id="operatingHoursHeader">
+                        <button class="btn btn-link btn-block text-left text-dark font-weight-bold p-0" type="button"
+                                data-toggle="collapse" data-target="#operatingHoursCollapse"
+                                aria-expanded="false" aria-controls="operatingHoursCollapse">
+                            <span class="d-flex justify-content-between align-items-center">
+                                <span>Operating Hours</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </span>
+                        </button>
+                    </div>
+                    <div class="collapse" id="operatingHoursCollapse" aria-labelledby="operatingHoursHeader">
+                        <div class="p-3">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-borderless">
+                                <tbody>
+                                    <tr>
+                                        <td style="width: 100px;"><label for="mondayStart" class="mb-0">Monday</label></td>
+                                        <td><input type="time" id="mondayStart" class="form-control form-control-sm" value="10:00"></td>
+                                        <td class="text-center" style="width: 30px;">to</td>
+                                        <td><input type="time" id="mondayEnd" class="form-control form-control-sm" value="21:00"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><label for="tuesdayStart" class="mb-0">Tuesday</label></td>
+                                        <td><input type="time" id="tuesdayStart" class="form-control form-control-sm" value="10:00"></td>
+                                        <td class="text-center">to</td>
+                                        <td><input type="time" id="tuesdayEnd" class="form-control form-control-sm" value="21:00"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><label for="wednesdayStart" class="mb-0">Wednesday</label></td>
+                                        <td><input type="time" id="wednesdayStart" class="form-control form-control-sm" value="10:00"></td>
+                                        <td class="text-center">to</td>
+                                        <td><input type="time" id="wednesdayEnd" class="form-control form-control-sm" value="21:00"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><label for="thursdayStart" class="mb-0">Thursday</label></td>
+                                        <td><input type="time" id="thursdayStart" class="form-control form-control-sm" value="10:00"></td>
+                                        <td class="text-center">to</td>
+                                        <td><input type="time" id="thursdayEnd" class="form-control form-control-sm" value="21:00"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><label for="fridayStart" class="mb-0">Friday</label></td>
+                                        <td><input type="time" id="fridayStart" class="form-control form-control-sm" value="09:00"></td>
+                                        <td class="text-center">to</td>
+                                        <td><input type="time" id="fridayEnd" class="form-control form-control-sm" value="21:00"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><label for="saturdayStart" class="mb-0">Saturday</label></td>
+                                        <td><input type="time" id="saturdayStart" class="form-control form-control-sm" value="09:00"></td>
+                                        <td class="text-center">to</td>
+                                        <td><input type="time" id="saturdayEnd" class="form-control form-control-sm" value="21:00"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><label for="sundayStart" class="mb-0">Sunday</label></td>
+                                        <td><input type="time" id="sundayStart" class="form-control form-control-sm" value="10:00"></td>
+                                        <td class="text-center">to</td>
+                                        <td><input type="time" id="sundayEnd" class="form-control form-control-sm" value="21:00"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- UPDATED SETTINGS BLOCK -->
-                <div class="form-group" id="departmentOverlap">
-                    <label class="d-block mb-2">Prevent overlapping breaks in</label>
+                <!-- Department Coverage Optimization Settings (Collapsible) -->
+                <div class="card mb-3">
+                    <div class="card-header bg-light" id="departmentOptimizationHeader">
+                        <button class="btn btn-link btn-block text-left text-dark font-weight-bold p-0" type="button"
+                                data-toggle="collapse" data-target="#departmentOptimizationCollapse"
+                                aria-expanded="false" aria-controls="departmentOptimizationCollapse">
+                            <span class="d-flex justify-content-between align-items-center">
+                                <span>Coverage Optimization</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </span>
+                        </button>
+                    </div>
+                    <div class="collapse" id="departmentOptimizationCollapse" aria-labelledby="departmentOptimizationHeader">
+                    <div class="p-3">
+                    <p class="mb-3">Optimize breaks for coverage during operating hours in the following departments:</p>
                     <div class="row">
 
                         <!-- LEFT COLUMN -->
@@ -40,7 +112,7 @@
                             <h6>Frontline</h6>
                             <div class="ml-3">
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input"
+                                    <input type="checkbox" class="form-check-input dept-checkbox"
                                            id="frontlineCashier"
                                            data-main="Frontline"
                                            data-sub="Cashier"
@@ -50,23 +122,23 @@
                                     </label>
                                 </div>
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input"
-                                           id="frontlineCustomerServiceSouth"
+                                    <input type="checkbox" class="form-check-input dept-checkbox"
+                                           id="frontlineCustomerService"
                                            data-main="Frontline"
                                            data-sub="Customer Service"
                                            checked>
-                                    <label class="form-check-label" for="frontlineCustomerServiceSouth">
-                                        Customer Service (South)
+                                    <label class="form-check-label" for="frontlineCustomerService">
+                                        Customer Service
                                     </label>
                                 </div>
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input"
-                                           id="frontlineCustomerServiceNorth"
+                                    <input type="checkbox" class="form-check-input dept-checkbox"
+                                           id="frontlineCustomerServiceBldg2"
                                            data-main="Frontline"
                                            data-sub="Customer Service Bldg 2"
                                            checked>
-                                    <label class="form-check-label" for="frontlineCustomerServiceNorth">
-                                        Customer Service (North)
+                                    <label class="form-check-label" for="frontlineCustomerServiceBldg2">
+                                        Customer Service Bldg 2
                                     </label>
                                 </div>
                             </div>
@@ -74,7 +146,17 @@
                             <h6 class="mt-3">Hardgoods</h6>
                             <div class="ml-3">
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input"
+                                    <input type="checkbox" class="form-check-input dept-checkbox"
+                                           id="hardgoodsGeneric"
+                                           data-main="Hardgoods"
+                                           data-sub="Hardgoods"
+                                           checked>
+                                    <label class="form-check-label" for="hardgoodsGeneric">
+                                        Hardgoods
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input dept-checkbox"
                                            id="hardgoodsActionSports"
                                            data-main="Hardgoods"
                                            data-sub="Action Sports"
@@ -84,7 +166,7 @@
                                     </label>
                                 </div>
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input"
+                                    <input type="checkbox" class="form-check-input dept-checkbox"
                                            id="hardgoodsCamping"
                                            data-main="Hardgoods"
                                            data-sub="Camping"
@@ -98,7 +180,17 @@
                             <h6 class="mt-3">Softgoods</h6>
                             <div class="ml-3">
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input"
+                                    <input type="checkbox" class="form-check-input dept-checkbox"
+                                           id="softgoodsGeneric"
+                                           data-main="Softgoods"
+                                           data-sub="Softgoods"
+                                           checked>
+                                    <label class="form-check-label" for="softgoodsGeneric">
+                                        Softgoods
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input dept-checkbox"
                                            id="softgoodsClothing"
                                            data-main="Softgoods"
                                            data-sub="Clothing"
@@ -108,7 +200,7 @@
                                     </label>
                                 </div>
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input"
+                                    <input type="checkbox" class="form-check-input dept-checkbox"
                                            id="softgoodsFootwear"
                                            data-main="Softgoods"
                                            data-sub="Footwear"
@@ -122,23 +214,23 @@
                             <h6 class="mt-3">Management</h6>
                             <div class="ml-3">
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input"
-                                           id="managementSouth"
+                                    <input type="checkbox" class="form-check-input dept-checkbox"
+                                           id="management"
                                            data-main="Management"
                                            data-sub="Management"
                                            checked>
-                                    <label class="form-check-label" for="managementSouth">
-                                        Management (South)
+                                    <label class="form-check-label" for="management">
+                                        Management
                                     </label>
                                 </div>
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input"
-                                           id="managementNorth"
+                                    <input type="checkbox" class="form-check-input dept-checkbox"
+                                           id="managementBldg2"
                                            data-main="Management"
                                            data-sub="Management Bldg 2"
                                            checked>
-                                    <label class="form-check-label" for="managementNorth">
-                                        Management (North)
+                                    <label class="form-check-label" for="managementBldg2">
+                                        Management Bldg 2
                                     </label>
                                 </div>
                             </div>
@@ -149,7 +241,7 @@
                             <h6>Product Movement</h6>
                             <div class="ml-3">
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input"
+                                    <input type="checkbox" class="form-check-input dept-checkbox"
                                            id="pmActionSports"
                                            data-main="Product Movement"
                                            data-sub="Action Sports Stock"
@@ -159,7 +251,7 @@
                                     </label>
                                 </div>
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input"
+                                    <input type="checkbox" class="form-check-input dept-checkbox"
                                            id="pmCamping"
                                            data-main="Product Movement"
                                            data-sub="Camping Stock"
@@ -169,7 +261,7 @@
                                     </label>
                                 </div>
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input"
+                                    <input type="checkbox" class="form-check-input dept-checkbox"
                                            id="pmClothing"
                                            data-main="Product Movement"
                                            data-sub="Clothing Stock"
@@ -179,7 +271,7 @@
                                     </label>
                                 </div>
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input"
+                                    <input type="checkbox" class="form-check-input dept-checkbox"
                                            id="pmFootwear"
                                            data-main="Product Movement"
                                            data-sub="Footwear Stock"
@@ -189,7 +281,7 @@
                                     </label>
                                 </div>
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input"
+                                    <input type="checkbox" class="form-check-input dept-checkbox"
                                            id="pmShipRecv"
                                            data-main="Product Movement"
                                            data-sub="Ship Recv"
@@ -203,7 +295,7 @@
                             <h6 class="mt-3">Shop</h6>
                             <div class="ml-3">
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input"
+                                    <input type="checkbox" class="form-check-input dept-checkbox"
                                            id="shopAssembler"
                                            data-main="Shop"
                                            data-sub="Assembler"
@@ -213,7 +305,7 @@
                                     </label>
                                 </div>
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input"
+                                    <input type="checkbox" class="form-check-input dept-checkbox"
                                            id="shopServiceAdvisor"
                                            data-main="Shop"
                                            data-sub="Service Advisor"
@@ -223,7 +315,7 @@
                                     </label>
                                 </div>
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input"
+                                    <input type="checkbox" class="form-check-input dept-checkbox"
                                            id="shopSkiShop"
                                            data-main="Shop"
                                            data-sub="Ski Shop"
@@ -234,10 +326,10 @@
                                 </div>
                             </div>
 
-                            <h6 class="mt-3">Other</h6>
+                            <h6 class="mt-3">Order Fulfillment</h6>
                             <div class="ml-3">
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input"
+                                    <input type="checkbox" class="form-check-input dept-checkbox"
                                            id="orderFulfillment"
                                            data-main="Order Fulfillment"
                                            data-sub="*">
@@ -248,12 +340,14 @@
                             </div>
                         </div>
                     </div>
+                    </div>
+                    </div>
                 </div>
                 <!-- END UPDATED SETTINGS BLOCK -->
             </div>
 
             <div id="downloadLinkFooter" class="card-footer text-center d-none">
-                <a id="downloadLink" class="btn btn-success d-none" download="Schedule.xlsx">Download</a>
+                <a id="downloadLink" class="btn btn-success d-none" download="Schedule.xlsx">Export Schedule</a>
             </div>
             <!-- Hidden Link for Triggering the Download -->
             <a id="hiddenDownloadLink" style="display: none;"></a>
@@ -264,6 +358,11 @@
     <footer class="text-center mt-4">
         <p>&copy; 2025 Kaden Campbell. All rights reserved.</p>
     </footer>
+
+    <!-- Bootstrap JS (required for collapse functionality) -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
     <!-- Link to the external script.js file -->
     <script src="script.js"></script>
