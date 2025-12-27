@@ -182,7 +182,17 @@
                                 <label for="maxRestDelay">
                                     Maximum Rest Period Delay: <strong><span id="maxRestDelayValue">30</span> minutes</strong>
                                 </label>
-                                <input type="range" class="form-control-range" id="maxRestDelay" min="0" max="60" step="15" value="30">
+                                <div class="slider-container">
+                                    <div class="slider-wrapper">
+                                        <input type="range" class="form-control-range" id="maxRestDelay" min="0" max="45" step="15" value="30">
+                                        <div class="slider-ticks">
+                                            <div class="slider-tick"><span class="slider-tick-label">0</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">15</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">30</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">45</span></div>
+                                        </div>
+                                    </div>
+                                </div>
                                 <small class="form-text text-muted">How late a rest break can be scheduled past the ideal time (ideal = 2 hours into shift). Higher values give more flexibility for coverage optimization.</small>
                             </div>
 
@@ -190,7 +200,17 @@
                                 <label for="maxRestEarly">
                                     Maximum Rest Period Early Start: <strong><span id="maxRestEarlyValue">15</span> minutes</strong>
                                 </label>
-                                <input type="range" class="form-control-range" id="maxRestEarly" min="0" max="60" step="15" value="15">
+                                <div class="slider-container">
+                                    <div class="slider-wrapper">
+                                        <input type="range" class="form-control-range" id="maxRestEarly" min="0" max="45" step="15" value="15">
+                                        <div class="slider-ticks">
+                                            <div class="slider-tick"><span class="slider-tick-label">0</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">15</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">30</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">45</span></div>
+                                        </div>
+                                    </div>
+                                </div>
                                 <small class="form-text text-muted">How early a rest break can be scheduled before the ideal time. Higher values give more flexibility for coverage optimization.</small>
                             </div>
 
@@ -198,15 +218,35 @@
                                 <label for="maxMealDelay">
                                     Maximum Meal Period Delay: <strong><span id="maxMealDelayValue">30</span> minutes</strong>
                                 </label>
-                                <input type="range" class="form-control-range" id="maxMealDelay" min="0" max="45" step="15" value="30">
+                                <div class="slider-container">
+                                    <div class="slider-wrapper">
+                                        <input type="range" class="form-control-range" id="maxMealDelay" min="0" max="45" step="15" value="30">
+                                        <div class="slider-ticks">
+                                            <div class="slider-tick"><span class="slider-tick-label">0</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">15</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">30</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">45</span></div>
+                                        </div>
+                                    </div>
+                                </div>
                                 <small class="form-text text-muted">How late a meal break can be scheduled past the ideal time (ideal = 4 hours into shift). Higher values give more flexibility for coverage optimization.</small>
                             </div>
 
                             <div class="form-group">
                                 <label for="maxMealEarly">
-                                    Maximum Meal Period Early Start: <strong><span id="maxMealEarlyValue">0</span> minutes</strong>
+                                    Maximum Meal Period Early Start: <strong><span id="maxMealEarlyValue">15</span> minutes</strong>
                                 </label>
-                                <input type="range" class="form-control-range" id="maxMealEarly" min="0" max="45" step="15" value="0">
+                                <div class="slider-container">
+                                    <div class="slider-wrapper">
+                                        <input type="range" class="form-control-range" id="maxMealEarly" min="0" max="45" step="15" value="15">
+                                        <div class="slider-ticks">
+                                            <div class="slider-tick"><span class="slider-tick-label">0</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">15</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">30</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">45</span></div>
+                                        </div>
+                                    </div>
+                                </div>
                                 <small class="form-text text-muted">How early a meal break can be scheduled before the ideal time. Higher values give more flexibility but may violate labor law timing requirements.</small>
                             </div>
 
@@ -218,7 +258,23 @@
                                 <label for="deptWeightMultiplier">
                                     Same-Department Coverage Weight: <strong><span id="deptWeightMultiplierValue">4</span>×</strong>
                                 </label>
-                                <input type="range" class="form-control-range" id="deptWeightMultiplier" min="1" max="10" step="1" value="4">
+                                <div class="slider-container">
+                                    <div class="slider-wrapper">
+                                        <input type="range" class="form-control-range" id="deptWeightMultiplier" min="1" max="10" step="1" value="4">
+                                        <div class="slider-ticks">
+                                            <div class="slider-tick"><span class="slider-tick-label">1</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">2</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">3</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">4</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">5</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">6</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">7</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">8</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">9</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">10</span></div>
+                                        </div>
+                                    </div>
+                                </div>
                                 <small class="form-text text-muted">How much to prioritize same-department coverage over overall group coverage. Higher values mean breaks are scheduled to maintain department coverage first, then group coverage second.</small>
                             </div>
 
@@ -226,7 +282,24 @@
                                 <label for="proximityWeight">
                                     Ideal Break Time Priority: <strong><span id="proximityWeightValue">1</span>×</strong>
                                 </label>
-                                <input type="range" class="form-control-range" id="proximityWeight" min="0" max="10" step="1" value="1">
+                                <div class="slider-container">
+                                    <div class="slider-wrapper">
+                                        <input type="range" class="form-control-range" id="proximityWeight" min="0" max="10" step="1" value="1">
+                                        <div class="slider-ticks">
+                                            <div class="slider-tick"><span class="slider-tick-label">0</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">1</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">2</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">3</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">4</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">5</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">6</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">7</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">8</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">9</span></div>
+                                            <div class="slider-tick"><span class="slider-tick-label">10</span></div>
+                                        </div>
+                                    </div>
+                                </div>
                                 <small class="form-text text-muted">How strongly to prefer ideal break times when coverage scores are similar. Higher values mean breaks stay closer to ideal times (2 hours for rest, 4 hours for meals).</small>
                             </div>
 
