@@ -98,12 +98,18 @@ const DEFAULT_GROUPS = [
     {
         id: 2,
         name: "Camping",
-        departments: [{main: "Hardgoods", sub: "Camping"}]
+        departments: [
+            {main: "Hardgoods", sub: "Camping"},
+            {main: "Hardgoods", sub: "Hardgoods"}
+        ]
     },
     {
         id: 3,
         name: "Clothing",
-        departments: [{main: "Softgoods", sub: "Clothing"}]
+        departments: [
+            {main: "Softgoods", sub: "Clothing"},
+            {main: "Softgoods", sub: "Softgoods"}
+        ]
     },
     {
         id: 4,
@@ -120,10 +126,10 @@ const DEFAULT_GROUPS = [
 // Default advanced settings
 const DEFAULT_ADVANCED_SETTINGS = {
     maxMealEarly: 15,        // Max minutes to schedule meal early
-    maxMealDelay: 45,        // Max minutes to delay meal
+    maxMealDelay: 30,        // Max minutes to delay meal
     maxRestEarly: 15,        // Max minutes to schedule rest break early
     maxRestDelay: 30,        // Max minutes to delay rest break
-    deptWeightMultiplier: 3, // How much to prioritize same-department coverage
+    deptWeightMultiplier: 4, // How much to prioritize same-department coverage
     proximityWeight: 1       // Weight for proximity to ideal time
 };
 
