@@ -112,10 +112,19 @@ function loadOperatingHours() {
             return JSON.parse(stored);
         } catch (e) {
             console.error('Failed to parse stored operating hours:', e);
-            return DEFAULT_OPERATING_HOURS;
         }
     }
-    return DEFAULT_OPERATING_HOURS;
+
+    // Return default hours for all days (10:00 AM - 9:00 PM in 24-hour format)
+    return {
+        monday: { start: '10:00', end: '21:00' },
+        tuesday: { start: '10:00', end: '21:00' },
+        wednesday: { start: '10:00', end: '21:00' },
+        thursday: { start: '10:00', end: '21:00' },
+        friday: { start: '10:00', end: '21:00' },
+        saturday: { start: '10:00', end: '21:00' },
+        sunday: { start: '10:00', end: '21:00' }
+    };
 }
 
 // Save operating hours to localStorage
