@@ -1,134 +1,7 @@
 // ====================================================================================
-// DEPARTMENT REGISTRY - All departments organized hierarchically
-// ====================================================================================
-
-const DEPARTMENT_REGISTRY = {
-    "Frontline": [
-        "Cashier",
-        "Cashier Bldg 2",
-        "Customer Service",
-        "Customer Service Bldg 2",
-        "Greeter",
-        "Greeter Bldg 2",
-        "Order Pick Up",
-        "Order Pick Up Bldg 2"
-    ],
-    "Hardgoods": [
-        "Action Sports",
-        "Camping",
-        "Climbing",
-        "Cycling",
-        "Hardgoods",
-        "Nordic",
-        "Optics",
-        "Outfitter",
-        "Packs",
-        "Paddling",
-        "Racks",
-        "Rentals",
-        "Ski",
-        "Snow Clothing",
-        "Snow Sports"
-    ],
-    "Softgoods": [
-        "Childrenswear",
-        "Clothing",
-        "Fitting Room",
-        "Footwear",
-        "Mens Clothing",
-        "Outfitter",
-        "Softgoods",
-        "Womens Clothing"
-    ],
-    "Office": [
-        "Banker",
-        "Office"
-    ],
-    "Order Fulfillment": [
-        "Order Fulfillment",
-        "Order Fulfillment Bldg 2"
-    ],
-    "Product Movement": [
-        "Action Sports Stock",
-        "Camping Stock",
-        "Clothing Stock",
-        "Cycling Stock",
-        "Footwear Stock",
-        "Hardgoods Stock",
-        "Ops Stock",
-        "Ops Stock Bldg 2",
-        "Ship Recv",
-        "Ship Recv Bldg 2",
-        "Snow Sports Stock",
-        "Softgoods Stock",
-        "Stocking"
-    ],
-    "Shop": [
-        "Assembler",
-        "Service Advisor",
-        "Ski Shop"
-    ],
-    "Mgmt Retail": [
-        "Key Holder",
-        "Key Holder Bldg 2",
-        "Leader on Duty",
-        "Management",
-        "Management Bldg 2"
-    ]
-};
-
-// Default coverage optimization groups
-const DEFAULT_GROUPS = [
-    {
-        id: 1,
-        name: "Building 2 Cross-trained",
-        departments: [
-            {main: "Hardgoods", sub: "Action Sports"},
-            {main: "Hardgoods", sub: "Rentals"},
-            {main: "Frontline", sub: "Cashier Bldg 2"},
-            {main: "Frontline", sub: "Customer Service Bldg 2"}
-        ]
-    },
-    {
-        id: 2,
-        name: "Camping",
-        departments: [{main: "Hardgoods", sub: "Camping"}]
-    },
-    {
-        id: 3,
-        name: "Clothing",
-        departments: [{main: "Softgoods", sub: "Clothing"}]
-    },
-    {
-        id: 4,
-        name: "Footwear",
-        departments: [{main: "Softgoods", sub: "Footwear"}]
-    },
-    {
-        id: 5,
-        name: "Cashier",
-        departments: [{main: "Frontline", sub: "Cashier"}]
-    },
-    {
-        id: 6,
-        name: "Customer Service",
-        departments: [{main: "Frontline", sub: "Customer Service"}]
-    }
-];
-
-// ====================================================================================
 // ADVANCED SETTINGS MANAGEMENT
 // ====================================================================================
-
-// Default advanced settings
-const DEFAULT_ADVANCED_SETTINGS = {
-    maxRestDelay: 30,          // Maximum delay for rest breaks (minutes)
-    maxRestEarly: 15,          // Maximum early start for rest breaks (minutes)
-    maxMealDelay: 30,          // Maximum delay for meal breaks (minutes)
-    maxMealEarly: 0,           // Maximum early start for meal breaks (minutes)
-    deptWeightMultiplier: 4,   // Weight for same-department coverage vs group coverage (1-10 scale)
-    proximityWeight: 1         // Weight for proximity to ideal break time (1-10 scale)
-};
+// Note: DEPARTMENT_REGISTRY, DEFAULT_GROUPS, and DEFAULT_ADVANCED_SETTINGS are defined in scheduler.js
 
 // Load advanced settings from localStorage or use defaults
 function loadAdvancedSettings() {
@@ -229,17 +102,7 @@ function initializeStateSelection() {
 // ====================================================================================
 // OPERATING HOURS MANAGEMENT
 // ====================================================================================
-
-// Default operating hours
-const DEFAULT_OPERATING_HOURS = {
-    monday: { start: "10:00", end: "21:00" },
-    tuesday: { start: "10:00", end: "21:00" },
-    wednesday: { start: "10:00", end: "21:00" },
-    thursday: { start: "10:00", end: "21:00" },
-    friday: { start: "09:00", end: "21:00" },
-    saturday: { start: "09:00", end: "21:00" },
-    sunday: { start: "10:00", end: "21:00" }
-};
+// Note: DEFAULT_OPERATING_HOURS is defined in scheduler.js
 
 // Load operating hours from localStorage or use defaults
 function loadOperatingHours() {
@@ -953,19 +816,105 @@ document.getElementById("downloadLink").addEventListener("click", () => {
         // Convert the first worksheet from the XLSX workbook into JSON row data
         const rowData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-        // Derive the schedule date from the spreadsheet contents
-        const scheduleDate = extractScheduleDate(rowData);
+        // Check if this is a multi-day schedule file
+        const dailySchedules = splitIntoDailySchedules(rowData);
 
-        // Get operating hours for the schedule date's day of week
-        const operatingHours = getOperatingHoursForDate(scheduleDate);
+        if (dailySchedules.length > 1) {
+            // Process multiple daily schedules
+            processMultipleDailySchedules(dailySchedules);
+        } else {
+            // Single schedule - process as before
+            const scheduleDate = extractScheduleDate(rowData);
+            const operatingHours = getOperatingHoursForDate(scheduleDate);
 
-        // Process the data and insert breaks directly into the existing sheet
-        processRowDataInPlace(sheet, rowData, operatingHours);
+            processRowDataInPlace(sheet, rowData, operatingHours);
+            applyReportStyling(sheet, rowData);
 
-        // Apply styling to the sheet
-        applyReportStyling(sheet, rowData);
+            const workbookBlob = XLSX.write(workbook, {
+                bookType: "xlsx",
+                type: "binary",
+                cellStyles: true
+            });
+            const blob = new Blob([stringToArrayBuffer(workbookBlob)], { type: "application/octet-stream" });
+            const url = URL.createObjectURL(blob);
 
-        const workbookBlob = XLSX.write(workbook, {
+            const hiddenDownloadLink = document.getElementById("hiddenDownloadLink");
+            hiddenDownloadLink.href = url;
+            hiddenDownloadLink.download = `Break Schedule ${scheduleDate}.xlsx`;
+            hiddenDownloadLink.click();
+        }
+    };
+
+    reader.readAsArrayBuffer(selectedFile);
+});
+
+// Split a multi-day schedule file into individual daily schedules
+function splitIntoDailySchedules(rowData) {
+    const dailySchedules = [];
+    let currentSchedule = [];
+    let currentDate = null;
+
+    for (let i = 0; i < rowData.length; i++) {
+        const row = rowData[i];
+        const cell = row[0];
+
+        // Check if this row contains a date marker
+        if (typeof cell === "string") {
+            const isoMatch = cell.match(/Date:\s*(\d{4}-\d{2}-\d{2})/);
+            if (isoMatch) {
+                // If we have a current schedule being built, save it
+                if (currentSchedule.length > 0 && currentDate) {
+                    dailySchedules.push({
+                        date: currentDate,
+                        rows: currentSchedule
+                    });
+                }
+                // Start a new schedule
+                currentDate = isoMatch[1];
+                currentSchedule = [];
+            }
+        }
+
+        // Add this row to the current schedule
+        currentSchedule.push([...row]);
+    }
+
+    // Don't forget the last schedule
+    if (currentSchedule.length > 0 && currentDate) {
+        dailySchedules.push({
+            date: currentDate,
+            rows: currentSchedule
+        });
+    }
+
+    return dailySchedules;
+}
+
+// Process multiple daily schedules and generate separate files
+function processMultipleDailySchedules(dailySchedules) {
+    console.log(`Processing ${dailySchedules.length} daily schedules...`);
+
+    dailySchedules.forEach((schedule, index) => {
+        // Create a new workbook for this daily schedule
+        const wb = XLSX.utils.book_new();
+
+        // Convert rows to sheet
+        const ws = XLSX.utils.aoa_to_sheet(schedule.rows);
+
+        // Get operating hours for this date
+        const operatingHours = getOperatingHoursForDate(schedule.date);
+
+        // Process breaks for this schedule
+        processRowDataInPlace(ws, schedule.rows, operatingHours);
+
+        // Apply styling
+        applyReportStyling(ws, schedule.rows);
+
+        // Add worksheet to workbook
+        XLSX.utils.book_append_sheet(wb, ws, "Schedule");
+
+        // Generate file
+        const workbookBlob = XLSX.write(wb, {
             bookType: "xlsx",
             type: "binary",
             cellStyles: true
@@ -973,17 +922,21 @@ document.getElementById("downloadLink").addEventListener("click", () => {
         const blob = new Blob([stringToArrayBuffer(workbookBlob)], { type: "application/octet-stream" });
         const url = URL.createObjectURL(blob);
 
-        // Update the hidden download link with the generated file URL and filename
-        const hiddenDownloadLink = document.getElementById("hiddenDownloadLink");
-        hiddenDownloadLink.href = url;
-        hiddenDownloadLink.download = `Break Schedule ${scheduleDate}.xlsx`;
+        // Download the file
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Break Schedule ${schedule.date}.xlsx`;
+        link.style.display = 'none';
+        document.body.appendChild(link);
 
-        // Simulate a click on the hidden download link
-        hiddenDownloadLink.click();
-    };
-
-    reader.readAsArrayBuffer(selectedFile);
-});
+        // Use setTimeout to allow multiple downloads
+        setTimeout(() => {
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }, index * 500); // Stagger downloads by 500ms
+    });
+}
 
 // Function to style the schedule (restores your original formatting)
 function detectDataStart(rows) {
@@ -1004,6 +957,7 @@ function applyReportStyling(sheet, rows) {
 
     const range = XLSX.utils.decode_range(sheet["!ref"]);
     const lastRow = range.e.r;
+    const dataStart = detectDataStart(rows);
 
     function cellRef(r, c) {
         return XLSX.utils.encode_cell({ r, c });
@@ -1043,9 +997,9 @@ function applyReportStyling(sheet, rows) {
     }
 
     // 1) Base: ensure EVERY cell in A:G, rows 1..lastRow, exists and has default style
-    //    This guarantees blank cells like B7 actually exist and can get borders.
+    //    This guarantees blank cells actually exist and can get borders.
     for (let r = 0; r <= lastRow; r++) {
-        for (let c = 0; c <= 6; c++) {  // only columns A–G
+        for (let c = 0; c <= 6; c++) {  // only columns A–G (column D deleted)
             const cell = touchCell(r, c);
             // Each cell gets its own unique style object
             cell.s = {
@@ -1056,48 +1010,30 @@ function applyReportStyling(sheet, rows) {
         }
     }
 
-    // 2) A1: Arial, 12 pt, bold, center, center, no border
-    (function () {
-        const cell = touchCell(0, 0); // A1
+    // 2) Row 1 (Date row): A1-G1 merged, Arial 9pt bold left aligned
+    for (let c = 0; c <= 6; c++) {
+        const cell = touchCell(0, c); // A1-G1
         cell.s = {
-            font: { name: "Arial", sz: 12, bold: true },
-            alignment: { horizontal: "center", vertical: "center" }
-        };
-    })();
-
-    // 3) A2:A3 Arial, 7.5 pt, not bold, left, center
-    for (let r = 1; r <= 2; r++) {
-        const cell = touchCell(r, 0); // column A
-        cell.s = {
-            font: { name: "Arial", sz: 7.5, bold: false },
+            font: { name: "Arial", sz: 9, bold: true },
             alignment: { horizontal: "left", vertical: "center" }
         };
     }
 
-    // 4) C2:C3 Arial, 7.5 pt, not bold, left, top
-    for (let r = 1; r <= 2; r++) {
-        const cell = touchCell(r, 2); // column C
+    // 3) Row 2 (Location row): A2-G2 merged, Arial 9pt bold left aligned
+    for (let c = 0; c <= 6; c++) {
+        const cell = touchCell(1, c); // A2-G2
         cell.s = {
-            font: { name: "Arial", sz: 7.5, bold: false },
-            alignment: { horizontal: "left", vertical: "top" }
+            font: { name: "Arial", sz: 9, bold: true },
+            alignment: { horizontal: "left", vertical: "center" }
         };
     }
 
-    // 5) E2:E3 Arial, 7.5 pt, not bold, right, center
-    for (let r = 1; r <= 2; r++) {
-        const cell = touchCell(r, 4); // column E
+    // 4) Row 3 (Dept/Job header): Bold 7.5pt left aligned
+    for (let c = 0; c <= 6; c++) {
+        const cell = touchCell(2, c); // A3-G3
         cell.s = {
-            font: { name: "Arial", sz: 7.5, bold: false },
-            alignment: { horizontal: "right", vertical: "center" }
-        };
-    }
-
-    // 6) F2:F3 Arial, 7.5 pt, not bold, left, top
-    for (let r = 1; r <= 2; r++) {
-        const cell = touchCell(r, 5); // column F
-        cell.s = {
-            font: { name: "Arial", sz: 7.5, bold: false },
-            alignment: { horizontal: "left", vertical: "top" }
+            font: { name: "Arial", sz: 7.5, bold: true },
+            alignment: { horizontal: "left", vertical: "center" }
         };
     }
 
@@ -1110,9 +1046,9 @@ function applyReportStyling(sheet, rows) {
         };
     }
 
-    // 8) A7:G7 Arial, 7.5 pt, bold, left, center, thin 000000 border
+    // 8) Header row: Arial, 7.5 pt, bold, left, center, thin 000000 border
     (function () {
-        const r = 6; // row 7 (0-based)
+        const r = dataStart - 1; // The header row (row before data starts)
         for (let c = 0; c <= 6; c++) {
             const cell = touchCell(r, c);
             cell.s = {
@@ -1129,7 +1065,6 @@ function applyReportStyling(sheet, rows) {
     })();
 
     // 9) Header / non-header rows A–G from dataStart downward
-    const dataStart = detectDataStart(rows); // first data row index (0-based)
 
     for (let r = dataStart; r <= lastRow; r++) {
         const row = rows[r] || [];
@@ -1223,6 +1158,50 @@ function applyReportStyling(sheet, rows) {
             }
         });
     }
+
+    // Set column widths (after deleting column D)
+    // A: 6.14, B: 16, C-G: 13
+    sheet["!cols"] = [
+        { wch: 6.14 },  // A
+        { wch: 16 },    // B
+        { wch: 13 },    // C
+        { wch: 13 },    // D (was E - Shift)
+        { wch: 13 },    // E (was F - first break)
+        { wch: 13 },    // F (was G - meal break)
+        { wch: 13 }     // G (was H - second break)
+    ];
+
+    // Create merges array if it doesn't exist
+    if (!sheet["!merges"]) {
+        sheet["!merges"] = [];
+    }
+
+    // Merge A1:G1 for the title row (Date: YYYY-MM-DD)
+    sheet["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 6 } });
+
+    // Merge A2:G2 for Location row
+    sheet["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: 6 } });
+
+    // Find the header row (row with "Name" in column C) and merge A:B for that row
+    const headerRowIndex = dataStart - 1; // The row before data starts
+    if (headerRowIndex >= 0) {
+        sheet["!merges"].push({ s: { r: headerRowIndex, c: 0 }, e: { r: headerRowIndex, c: 1 } });
+    }
+
+    // Merge columns A and B for each department header row (rows with dept but no name)
+    for (let r = dataStart; r <= lastRow; r++) {
+        const row = rows[r] || [];
+        const colA = row[0];
+        const colC = row[2];
+
+        const hasDept = colA != null && String(colA).trim() !== "";
+        const hasName = colC != null && String(colC).trim() !== "";
+
+        if (hasDept && !hasName) {
+            // This is a department header row - merge A and B
+            sheet["!merges"].push({ s: { r: r, c: 0 }, e: { r: r, c: 1 } });
+        }
+    }
 }
 
 // Function to process the schedule and modify the sheet in place
@@ -1248,781 +1227,109 @@ function processRowDataInPlace(sheet, schedule, operatingHours) {
     const dataStart = detectDataStart(schedule);
     const headerRowIndex = dataStart - 1;
 
-    // Update column headers (D–G): Shift / 15 / 30 / 15
-    if (headerRowIndex >= 0) {
-        const headerLabels = ["Shift", "15", "30", "15"];
-        for (let offset = 0; offset < headerLabels.length; offset++) {
-            setCell(headerRowIndex, 3 + offset, headerLabels[offset]);
+    // DELETE COLUMN D (shift label column) from BOTH the sheet AND the schedule array
+    // First, delete from the schedule array
+    const modifiedSchedule = schedule.map(row => {
+        if (!row || row.length <= 4) return row; // Keep rows with 4 or fewer columns as-is
+        // Remove column D (index 3) by creating a new array without it
+        return [
+            row[0],  // A: Dept
+            row[1],  // B: Job
+            row[2],  // C: Name
+            // Skip row[3] - this is the shift label column D
+            ...row.slice(4)  // D onwards: Shift (was E) and any other columns
+        ];
+    });
+
+    // Now delete column D from the sheet
+    const sheetRange = XLSX.utils.decode_range(sheet["!ref"] || "A1");
+    const lastRow = sheetRange.e.r;
+    const lastCol = sheetRange.e.c;
+
+    // For each row, shift columns E onward to column D
+    for (let r = 0; r <= lastRow; r++) {
+        // Shift columns E through end to D through end-1
+        for (let c = 4; c <= lastCol; c++) { // c=4 is column E
+            const sourceRef = XLSX.utils.encode_cell({ r, c });
+            const targetRef = XLSX.utils.encode_cell({ r, c: c - 1 }); // shift left by 1
+
+            if (sheet[sourceRef]) {
+                sheet[targetRef] = sheet[sourceRef];
+            } else {
+                delete sheet[targetRef]; // Remove if source doesn't exist
+            }
         }
+        // Delete the last column (which is now a duplicate)
+        const lastColRef = XLSX.utils.encode_cell({ r, c: lastCol });
+        delete sheet[lastColRef];
+    }
+
+    // Update the sheet range to reflect the removed column
+    sheetRange.e.c = lastCol - 1;
+    sheet["!ref"] = XLSX.utils.encode_range(sheetRange);
+
+    // After deleting column D, the structure is now:
+    // A: Dept, B: Job, C: Name, D: Shift (was E)
+    // We add breaks in E, F, G (indices 4, 5, 6)
+    if (headerRowIndex >= 0) {
+        setCell(headerRowIndex, 4, "15");  // First rest break
+        setCell(headerRowIndex, 5, "30");  // Meal break
+        setCell(headerRowIndex, 6, "15");  // Second rest break
     }
 
     // Process the schedule data with operating hours
-    const result = processScheduleData(schedule, operatingHours);
+    // Get settings from DOM (will use defaults if not available)
+    const groups = getGroups();
+    const advSettings = loadAdvancedSettings();
+
+    const result = scheduleBreaks(modifiedSchedule, {
+        operatingHours: operatingHours,
+        groups: groups,
+        advancedSettings: advSettings,
+        enableLogging: true,
+        dataStart: dataStart,  // Pass the detected data start row
+        shiftColumnIndex: 3  // After deleting column D, shift is now in column D (index 3)
+    });
     const { breaks, segments } = result;
 
     // Track which employees have had their breaks written
     const printed = new Set();
 
     // Write breaks into the sheet for each segment row
+    // After deleting column D, breaks go in columns E, F, G (indices 4, 5, 6)
     segments.forEach(seg => {
         const empName = seg.name;
         const rZero = seg.rowIndex;
         const empBreaks = breaks[empName] || [];
         const firstRowForEmp = !printed.has(empName);
 
-        // Copy Shift from column E (index 4) to D (index 3)
-        if (seg.intervalStr) {
-            setCell(rZero, 3, seg.intervalStr);
-        }
-
         if (firstRowForEmp) {
             // First segment row for this person: write their breaks
-            setCell(rZero, 4, empBreaks[0] ? minutesToTime(empBreaks[0]) : "x"); // E: first rest
-            setCell(rZero, 5, empBreaks[1] ? minutesToTime(empBreaks[1]) : "x"); // F: meal
-            setCell(rZero, 6, empBreaks[2] ? minutesToTime(empBreaks[2]) : "x"); // G: second rest
+            setCell(rZero, 4, empBreaks[0] !== undefined ? minutesToTime(empBreaks[0]) : "");
+            setCell(rZero, 5, empBreaks[1] !== undefined ? minutesToTime(empBreaks[1]) : "");
+            setCell(rZero, 6, empBreaks[2] !== undefined ? minutesToTime(empBreaks[2]) : "");
 
             printed.add(empName);
         } else {
-            // Subsequent segments for the same person: mark as "x"
-            setCell(rZero, 4, "x");
-            setCell(rZero, 5, "x");
-            setCell(rZero, 6, "x");
+            // Subsequent segments for the same person: leave empty
+            setCell(rZero, 4, "");
+            setCell(rZero, 5, "");
+            setCell(rZero, 6, "");
         }
     });
 
-    // Ensure !ref includes columns up through G
+    // Ensure !ref includes columns up through G (after deleting column D)
     const ref = sheet["!ref"] || "A1";
-    const range = XLSX.utils.decode_range(ref);
-    if (range.e.c < 6) { // col G is index 6
-        range.e.c = 6;
-        sheet["!ref"] = XLSX.utils.encode_range(range);
+    const refRange = XLSX.utils.decode_range(ref);
+    if (refRange.e.c < 6) { // col G is index 6
+        refRange.e.c = 6;
+        sheet["!ref"] = XLSX.utils.encode_range(refRange);
     }
 }
 
-// Function to process the schedule and return breaks + segments
-function processScheduleData(schedule, operatingHours) {
-    let dept, newSchedule = [], shiftSegments = [];
-    const segments = []; // Track segments with row indices for writing back
-
-    // Extract operating hours (defaults to 9 AM - 9 PM if not provided)
-    const startOfDay = operatingHours ? operatingHours.startTime : 9 * 60;
-    const endOfDay = operatingHours ? operatingHours.endTime : 21 * 60;
-
-    // Loop through each row starting from index 7
-    for (let i = 7; i < schedule.length; i++) {
-        // If the first column contains a department name, assign it to "dept" and skip further processing for that row
-        if (schedule[i][0]) {
-            dept = schedule[i][0];
-
-            // Rename "Mgmt Retail" to "Management"
-            if (dept === "Mgmt Retail") {
-                dept = "Management";
-            }
-
-            // Remove "Training-" from department names that start with it
-            if (dept.startsWith("Training-")) {
-                dept = dept.replace("Training-", "");
-            }
-
-            continue;
-        }
-
-        // If there is no name, skip that row
-        if (!schedule[i][2]) {
-            continue;
-        }
-
-        let name = formatName(schedule[i][2]);
-
-        // Split the time interval (column 4) into start and end times, and convert them to minutes
-        let interval = schedule[i][4]?.split("-") || [];
-        interval = interval.map(bound => timeToMinutes(bound));
-        const intervalStr = schedule[i][4]; // Keep original string for display
-
-        // Add each row to the schedule with the department, job, name, and interval
-        newSchedule.push({
-            dept: dept,
-            job: schedule[i][1],
-            name: name,
-            interval: interval
-        });
-
-        // Accumulate shift segments by employee name
-        if (!shiftSegments[name]) {
-            shiftSegments[name] = [];
-        }
-
-        shiftSegments[name].push({
-            dept: dept,
-            job: schedule[i][1],
-            interval: interval
-        });
-
-        // Track segments with their row indices for writing back to the sheet
-        segments.push({
-            name: name,
-            dept: dept,
-            job: schedule[i][1],
-            start: interval[0],
-            end: interval[1],
-            intervalStr: intervalStr,
-            rowIndex: i
-        });
-    }
-
-    // Predefined order of departments
-    const departmentOrder = ["Frontline", "Hardgoods", "Softgoods", "Order Fulfillment", "Product Movement", "Shop", "Management"];
-
-    // Function to get the department index for sorting
-    function getDeptOrder(d) {
-        let index = departmentOrder.indexOf(d);
-        return index === -1 ? departmentOrder.length : index;
-    }
-
-    // Sort by predefined dept order; keep relative order otherwise
-    newSchedule.sort((a, b) => {
-        let da = getDeptOrder(a.dept);
-        let db = getDeptOrder(b.dept);
-        if (da !== db) return da - db;
-        return 0;
-    });
-
-    // Calculate the earliest and latest times for each person's shift
-    let shifts = {};
-    newSchedule.forEach(row => {
-        if (!(row.name in shifts)) shifts[row.name] = [1440, 0];
-        shifts[row.name][0] = Math.min(shifts[row.name][0], row.interval[0]);
-        shifts[row.name][1] = Math.max(shifts[row.name][1], row.interval[1]);
-    });
-
-    // ====================================================================================
-    // NEW CALIFORNIA LAW COMPLIANT BREAK SCHEDULING WITH COVERAGE OPTIMIZATION
-    // ====================================================================================
-
-    /**
-     * Calculate coverage map for all 15-minute intervals during operating hours
-     * Returns a map where keys are time in minutes, values are arrays of employee names working
-     */
-    function calculateCoverageMap(schedule, shifts, breaks = {}) {
-        const coverage = {};
-
-        // Initialize all 15-minute intervals for the operating hours
-        for (let time = startOfDay; time < endOfDay; time += 15) {
-            coverage[time] = [];
-        }
-
-        // For each employee, mark which intervals they're working (not on break)
-        schedule.forEach(row => {
-            const name = row.name;
-            const [shiftStart, shiftEnd] = row.interval;
-
-            // Get this employee's scheduled breaks
-            const employeeBreaks = breaks[name] || [];
-
-            // For each 15-minute interval during operating hours
-            for (let time = startOfDay; time < endOfDay; time += 15) {
-                // Check if employee is working during this interval
-                if (time >= shiftStart && time < shiftEnd) {
-                    // Check if employee is on a break during this interval
-                    let onBreak = false;
-
-                    for (let i = 0; i < employeeBreaks.length; i++) {
-                        if (employeeBreaks[i] === undefined) continue;
-
-                        const breakStart = employeeBreaks[i];
-                        const breakDuration = (i === 1) ? 30 : 15; // index 1 is meal (30 min), others are rest (15 min)
-                        const breakEnd = breakStart + breakDuration;
-
-                        // Check if this 15-min interval overlaps with the break
-                        if (time < breakEnd && time + 15 > breakStart) {
-                            onBreak = true;
-                            break;
-                        }
-                    }
-
-                    if (!onBreak) {
-                        coverage[time].push({
-                            name: name,
-                            dept: row.dept,
-                            subdept: row.job
-                        });
-                    }
-                }
-            }
-        });
-
-        return coverage;
-    }
-
-    /**
-     * Get all employees working in the same dept/subdept at a given time
-     * If the dept/subdept belongs to a group, returns all employees in ALL departments within that group
-     */
-    function getCoworkersAtTime(coverage, time, dept, subdept) {
-        if (!coverage[time]) return [];
-
-        // Check if this department belongs to a group
-        const group = findGroupContaining(dept, subdept);
-
-        if (group) {
-            // Return all employees in ANY department within this group
-            return coverage[time].filter(emp =>
-                group.departments.some(d =>
-                    d.main === emp.dept && d.sub === emp.subdept
-                )
-            );
-        } else {
-            // Original behavior - only employees in the same dept/subdept
-            return coverage[time].filter(emp => emp.dept === dept && emp.subdept === subdept);
-        }
-    }
-
-    /**
-     * Count how many employees from the same dept/subdept are on break at a specific time
-     * If the dept/subdept belongs to a group, counts breaks across ALL departments within that group
-     */
-    function countBreaksAtTime(schedule, breaks, targetTime, breakDuration, dept, subdept) {
-        let count = 0;
-
-        // Check if this department belongs to a group
-        const group = findGroupContaining(dept, subdept);
-
-        for (let name in breaks) {
-            // Find this employee's dept/subdept
-            const empRow = schedule.find(row => row.name === name);
-            if (!empRow) continue;
-
-            // Check if employee belongs to the same group or department
-            let isInScope = false;
-            if (group) {
-                // Check if employee is in ANY department within this group
-                isInScope = group.departments.some(d =>
-                    d.main === empRow.dept && d.sub === empRow.job
-                );
-            } else {
-                // Original behavior - only same dept/subdept
-                isInScope = (empRow.dept === dept && empRow.job === subdept);
-            }
-
-            if (!isInScope) continue;
-
-            // Check all their breaks
-            const empBreaks = breaks[name];
-            for (let i = 0; i < empBreaks.length; i++) {
-                if (empBreaks[i] === undefined) continue;
-
-                const breakStart = empBreaks[i];
-                const duration = (i === 1) ? 30 : 15;
-                const breakEnd = breakStart + duration;
-
-                // Check if this break overlaps with our target time
-                if (targetTime < breakEnd && targetTime + breakDuration > breakStart) {
-                    count++;
-                    break; // Only count each employee once
-                }
-            }
-        }
-
-        return count;
-    }
-
-    // Initialize breaks object
-    let breaks = {};
-
-    // Detect lunch breaks already scheduled in UKG (from 30-minute gaps in the schedule)
-    for (let name in shiftSegments) {
-        let segments = shiftSegments[name];
-        segments.sort((a, b) => a.interval[0] - b.interval[0]);
-
-        for (let i = 0; i < segments.length - 1; i++) {
-            if (segments[i].interval[1] >= shifts[name][0] + 240 &&
-                segments[i + 1].interval[0] === segments[i].interval[1] + 30) {
-                if (!breaks[name]) {
-                    breaks[name] = [];
-                }
-                breaks[name][1] = segments[i].interval[1];
-            }
-        }
-    }
-
-    // ====================================================================================
-    // STEP 1: SCHEDULE MEAL PERIODS (CALIFORNIA LAW COMPLIANT)
-    // ====================================================================================
-
-    // Determine who needs meal periods based on shift duration
-    // Process employees in schedule order for consistent break assignment
-    const employeesNeedingMeals = [];
-    const processedForMeals = new Set();
-
-    newSchedule.forEach(row => {
-        const name = row.name;
-
-        // Skip if we've already processed this employee
-        if (processedForMeals.has(name)) return;
-        processedForMeals.add(name);
-
-        const shiftDuration = shifts[name][1] - shifts[name][0];
-
-        // California law (with 7-minute early clock-in allowance):
-        // 0:00-4:45: no meal period
-        // 4:46-9:45: one meal period
-        // 9:46+: two meal periods
-
-        let mealsNeeded = 0;
-        if (shiftDuration > 285) mealsNeeded = 1;      // > 4:45
-        if (shiftDuration > 585) mealsNeeded = 2;      // > 9:45
-
-        if (mealsNeeded > 0) {
-            employeesNeedingMeals.push({
-                name: name,
-                shiftStart: shifts[name][0],
-                shiftEnd: shifts[name][1],
-                mealsNeeded: mealsNeeded,
-                hasUKGLunch: breaks[name] && breaks[name][1] !== undefined
-            });
-        }
-    });
-
-    // Schedule first meal period at ideal time (+4 hours), handling conflicts greedily
-    for (let emp of employeesNeedingMeals) {
-        if (!breaks[emp.name]) breaks[emp.name] = [];
-
-        // Skip if already has lunch from UKG
-        if (emp.hasUKGLunch) continue;
-
-        // Find the employee's dept/subdept
-        const empRow = newSchedule.find(row => row.name === emp.name);
-        if (!empRow) continue;
-
-        const dept = empRow.dept;
-        const subdept = empRow.job;
-
-        // Check if this department is in a group
-        const group = findGroupContaining(dept, subdept);
-
-        // Skip if break staggering is disabled (not in any group)
-        if (!group) {
-            // Just schedule at ideal time without conflict resolution
-            breaks[emp.name][1] = emp.shiftStart + 240; // +4:00 hours
-            continue;
-        }
-
-        // Ideal meal time: +4 hours into shift
-        const idealMealTime = emp.shiftStart + 240;
-
-        // Load advanced settings
-        const advSettings = loadAdvancedSettings();
-
-        // Count how many coworkers already have lunch at the ideal time
-        const conflictsAtIdeal = countBreaksAtTime(newSchedule, breaks, idealMealTime, 30, dept, subdept);
-
-        console.log(`[MEAL DEBUG] ${emp.name} (${group.name}): ideal time ${minutesToTime(idealMealTime)}, conflicts: ${conflictsAtIdeal}`);
-
-        // Coverage-based optimization:
-        // Try multiple meal times and pick the one that maximizes coverage
-        // Priority: 1) Same department coverage, 2) Group coverage
-
-        // Generate possible times based on advanced settings
-        const possibleTimes = [idealMealTime];
-
-        // Add delayed times (after ideal) in 15-minute increments
-        for (let delay = 15; delay <= advSettings.maxMealDelay; delay += 15) {
-            possibleTimes.push(idealMealTime + delay);
-        }
-
-        // Add early times (before ideal) in 15-minute increments
-        for (let early = 15; early <= advSettings.maxMealEarly; early += 15) {
-            possibleTimes.push(idealMealTime - early);
-        }
-
-        // Filter to only valid times within shift
-        const validTimes = possibleTimes.filter(t => t >= emp.shiftStart && t + 30 <= emp.shiftEnd);
-
-        let bestTime = idealMealTime;
-        let bestScore = -Infinity;
-
-        for (const testTime of validTimes) {
-            // Create temporary breaks with this test time
-            const tempBreaks = JSON.parse(JSON.stringify(breaks));
-            tempBreaks[emp.name] = tempBreaks[emp.name] || [];
-            tempBreaks[emp.name][1] = testTime;
-
-            // Calculate coverage map with this meal time
-            const coverageMap = calculateCoverageMap(newSchedule, shifts, tempBreaks);
-
-            // Calculate minimum coverage during the actual meal break window (30 minutes)
-            // Priority 1: Same department coverage
-            // Priority 2: Group coverage
-            let minDeptCoverage = Infinity;
-            let minGroupCoverage = Infinity;
-
-            for (let time = testTime; time < testTime + 30; time += 15) {
-                const coworkers = coverageMap[time] || [];
-
-                // Count same-department coverage
-                const deptCoverage = coworkers.filter(c => c.dept === dept && c.subdept === subdept).length;
-                minDeptCoverage = Math.min(minDeptCoverage, deptCoverage);
-
-                // Count group coverage (all departments in the group)
-                const groupCoverage = coworkers.filter(c =>
-                    group.departments.some(d => d.main === c.dept && d.sub === c.subdept)
-                ).length;
-                minGroupCoverage = Math.min(minGroupCoverage, groupCoverage);
-            }
-
-            // Score: prioritize same-department coverage, then group coverage
-            // Weight department coverage based on advanced settings
-            const score = (minDeptCoverage * advSettings.deptWeightMultiplier) + minGroupCoverage;
-
-            // Add proximity bonus for being closer to ideal time
-            // Bonus strength based on advanced settings
-            const distanceFromIdeal = Math.abs(testTime - idealMealTime);
-            const proximityBonus = Math.max(0, advSettings.proximityWeight - (distanceFromIdeal / 20));
-
-            const finalScore = score + proximityBonus;
-
-            console.log(`  [EVAL] ${emp.name}: ${minutesToTime(testTime)} → dept coverage ${minDeptCoverage}, group coverage ${minGroupCoverage}, score ${score}, final ${finalScore.toFixed(2)}`);
-
-            if (finalScore > bestScore) {
-                bestScore = finalScore;
-                bestTime = testTime;
-            }
-        }
-
-        breaks[emp.name][1] = bestTime;
-
-        if (bestTime === idealMealTime) {
-            console.log(`[MEAL SCHEDULE] ${emp.name} (${group.name}): lunch scheduled at ${minutesToTime(idealMealTime)}`);
-        } else {
-            console.log(`[MEAL STAGGER] ${emp.name} (${group.name}): lunch optimized from ${minutesToTime(idealMealTime)} to ${minutesToTime(bestTime)} for coverage (score: ${bestScore})`);
-        }
-    }
-
-    // Handle second meal period (for shifts > 9:30)
-    for (let emp of employeesNeedingMeals) {
-        if (emp.mealsNeeded < 2) continue;
-
-        // Second meal should be scheduled later in the shift
-        // We'll use a simple approach: +8 hours into shift
-        breaks[emp.name].push(emp.shiftStart + 480);
-    }
-
-    // ====================================================================================
-    // STEP 2: SCHEDULE REST PERIODS (15-MINUTE BREAKS)
-    // ====================================================================================
-
-    // Get unique employee names in schedule order (not shifts object order)
-    const employeesInOrder = [];
-    const seenEmployees = new Set();
-    newSchedule.forEach(row => {
-        if (!seenEmployees.has(row.name)) {
-            seenEmployees.add(row.name);
-            employeesInOrder.push(row.name);
-        }
-    });
-
-    for (let name of employeesInOrder) {
-        if (!breaks[name]) breaks[name] = [];
-
-        const shiftStart = shifts[name][0];
-        const shiftEnd = shifts[name][1];
-        const shiftDuration = shiftEnd - shiftStart;
-
-        // California law for rest periods:
-        // 0:00-3:29: no rest break
-        // 3:30-5:59: one rest break
-        // 6:00-9:59: two rest breaks
-        // 10:00-13:59: three rest breaks
-
-        let restBreaksNeeded = 0;
-        if (shiftDuration >= 210) restBreaksNeeded = 1;   // >= 3:30
-        if (shiftDuration >= 360) restBreaksNeeded = 2;   // >= 6:00
-        if (shiftDuration >= 600) restBreaksNeeded = 3;   // >= 10:00
-
-        // Find employee's dept/subdept
-        const empRow = newSchedule.find(row => row.name === name);
-        if (!empRow) continue;
-
-        const dept = empRow.dept;
-        const subdept = empRow.job;
-
-        // Check if this department is in a group
-        const group = findGroupContaining(dept, subdept);
-
-        // Schedule first rest period (+2 hours into shift)
-        if (restBreaksNeeded >= 1) {
-            const idealFirstBreak = shiftStart + 120; // +2:00 hours
-
-            if (!group) {
-                // No conflict resolution (not in any group)
-                breaks[name][0] = idealFirstBreak;
-            } else {
-                // Load advanced settings
-                const advSettings = loadAdvancedSettings();
-
-                // Coverage-based optimization: find the time that maximizes minimum coverage
-                // Generate possible times based on advanced settings
-                const possibleTimes = [idealFirstBreak];
-
-                // Add delayed times (after ideal)
-                for (let delay = 15; delay <= advSettings.maxRestDelay; delay += 15) {
-                    possibleTimes.push(idealFirstBreak + delay);
-                }
-
-                // Add early times (before ideal)
-                for (let early = 15; early <= advSettings.maxRestEarly; early += 15) {
-                    possibleTimes.push(idealFirstBreak - early);
-                }
-
-                let bestTime = idealFirstBreak;
-                let bestMinCoverage = -1;
-
-                for (let i = 0; i < possibleTimes.length; i++) {
-                    const candidateTime = possibleTimes[i];
-                    if (candidateTime < shiftStart || candidateTime + 15 > shiftEnd) continue;
-
-                    // Simulate taking this break and calculate minimum coverage during the break
-                    const tempBreaks = { ...breaks };
-                    if (!tempBreaks[name]) tempBreaks[name] = [];
-                    tempBreaks[name] = [...(breaks[name] || [])];
-                    tempBreaks[name][0] = candidateTime;
-
-                    // Calculate coverage map with this break scheduled
-                    const tempCoverage = calculateCoverageMap(newSchedule, shifts, tempBreaks);
-
-                    // Calculate minimum coverage during the break
-                    // Priority 1: Same department coverage
-                    // Priority 2: Group coverage
-                    let minDeptCoverage = Infinity;
-                    let minGroupCoverage = Infinity;
-
-                    for (let t = candidateTime; t < candidateTime + 15; t += 15) {
-                        const coworkers = tempCoverage[t] || [];
-
-                        // Count same-department coverage
-                        const deptCoverage = coworkers.filter(c => c.dept === dept && c.subdept === subdept).length;
-                        minDeptCoverage = Math.min(minDeptCoverage, deptCoverage);
-
-                        // Count group coverage (all departments in the group)
-                        const groupCoverage = coworkers.filter(c =>
-                            group.departments.some(d => d.main === c.dept && d.sub === c.subdept)
-                        ).length;
-                        minGroupCoverage = Math.min(minGroupCoverage, groupCoverage);
-                    }
-
-                    // Score: prioritize same-department coverage, then group coverage
-                    // Weight department coverage based on advanced settings
-                    const score = (minDeptCoverage * advSettings.deptWeightMultiplier) + minGroupCoverage;
-
-                    // Add proximity bonus for being closer to ideal time
-                    // Bonus strength based on advanced settings
-                    const distanceFromIdeal = Math.abs(candidateTime - idealFirstBreak);
-                    const proximityBonus = Math.max(0, advSettings.proximityWeight - (distanceFromIdeal / 5));
-
-                    const finalScore = score + proximityBonus;
-
-                    console.log(`  [EVAL] ${name}: ${minutesToTime(candidateTime)} → dept coverage ${minDeptCoverage}, group coverage ${minGroupCoverage}, score ${score}, final ${finalScore.toFixed(2)}`);
-
-                    // Choose the time that maximizes the final score
-                    if (finalScore > bestMinCoverage) {
-                        bestMinCoverage = finalScore;
-                        bestTime = candidateTime;
-                        bestIndex = i;
-                    }
-                }
-
-                breaks[name][0] = bestTime;
-
-                if (bestTime !== idealFirstBreak) {
-                    const offset = bestTime - idealFirstBreak;
-                    console.log(`[REST STAGGER] ${name} (${group.name}): first break adjusted from ${minutesToTime(idealFirstBreak)} to ${minutesToTime(bestTime)} (offset: ${offset > 0 ? '+' : ''}${offset}min, maintains min coverage of ${bestMinCoverage})`);
-                }
-            }
-        }
-
-        // Schedule second rest period (+2 hours after returning from meal)
-        if (restBreaksNeeded >= 2 && breaks[name][1] !== undefined) {
-            const idealSecondBreak = breaks[name][1] + 30 + 120; // meal end + 2 hours
-
-            if (!group) {
-                // No conflict resolution (not in any group)
-                breaks[name][2] = idealSecondBreak;
-            } else {
-                // Load advanced settings
-                const advSettings = loadAdvancedSettings();
-
-                // Coverage-based optimization: find the time that maximizes minimum coverage
-                // Generate possible times based on advanced settings
-                const possibleTimes = [idealSecondBreak];
-
-                // Add delayed times (after ideal)
-                for (let delay = 15; delay <= advSettings.maxRestDelay; delay += 15) {
-                    possibleTimes.push(idealSecondBreak + delay);
-                }
-
-                // Add early times (before ideal)
-                for (let early = 15; early <= advSettings.maxRestEarly; early += 15) {
-                    possibleTimes.push(idealSecondBreak - early);
-                }
-
-                let bestTime = idealSecondBreak;
-                let bestMinCoverage = -1;
-
-                for (let i = 0; i < possibleTimes.length; i++) {
-                    const candidateTime = possibleTimes[i];
-                    if (candidateTime < shiftStart || candidateTime + 15 > shiftEnd) continue;
-
-                    // Simulate taking this break and calculate minimum coverage during the break
-                    const tempBreaks = { ...breaks };
-                    if (!tempBreaks[name]) tempBreaks[name] = [];
-                    tempBreaks[name] = [...(breaks[name] || [])];
-                    tempBreaks[name][2] = candidateTime;
-
-                    // Calculate coverage map with this break scheduled
-                    const tempCoverage = calculateCoverageMap(newSchedule, shifts, tempBreaks);
-
-                    // Calculate minimum coverage during the break
-                    // Priority 1: Same department coverage
-                    // Priority 2: Group coverage
-                    let minDeptCoverage = Infinity;
-                    let minGroupCoverage = Infinity;
-
-                    for (let t = candidateTime; t < candidateTime + 15; t += 15) {
-                        const coworkers = tempCoverage[t] || [];
-
-                        // Count same-department coverage
-                        const deptCoverage = coworkers.filter(c => c.dept === dept && c.subdept === subdept).length;
-                        minDeptCoverage = Math.min(minDeptCoverage, deptCoverage);
-
-                        // Count group coverage (all departments in the group)
-                        const groupCoverage = coworkers.filter(c =>
-                            group.departments.some(d => d.main === c.dept && d.sub === c.subdept)
-                        ).length;
-                        minGroupCoverage = Math.min(minGroupCoverage, groupCoverage);
-                    }
-
-                    // Score: prioritize same-department coverage, then group coverage
-                    // Weight department coverage based on advanced settings
-                    const score = (minDeptCoverage * advSettings.deptWeightMultiplier) + minGroupCoverage;
-
-                    // Add proximity bonus for being closer to ideal time
-                    // Bonus strength based on advanced settings
-                    const distanceFromIdeal = Math.abs(candidateTime - idealSecondBreak);
-                    const proximityBonus = Math.max(0, advSettings.proximityWeight - (distanceFromIdeal / 5));
-
-                    const finalScore = score + proximityBonus;
-
-                    // Choose the time that maximizes the final score
-                    if (finalScore > bestMinCoverage) {
-                        bestMinCoverage = finalScore;
-                        bestTime = candidateTime;
-                    }
-                }
-
-                breaks[name][2] = bestTime;
-
-                if (bestTime !== idealSecondBreak) {
-                    const offset = bestTime - idealSecondBreak;
-                    console.log(`[REST STAGGER] ${name} (${group.name}): second break adjusted from ${minutesToTime(idealSecondBreak)} to ${minutesToTime(bestTime)} (offset: ${offset > 0 ? '+' : ''}${offset}min, maintains min coverage of ${bestMinCoverage})`);
-                }
-            }
-        }
-
-        // Third rest period (for very long shifts)
-        if (restBreaksNeeded >= 3 && breaks[name][2] !== undefined) {
-            // Schedule +2 hours after second break
-            const idealThirdBreak = breaks[name][2] + 15 + 120;
-            breaks[name][3] = idealThirdBreak;
-        }
-    }
-
-    // Post-processing: swap breaks to preserve schedule order where coverage is identical
-    // This handles cases where employee A appears before employee B in the schedule,
-    // but B gets an earlier break time due to coverage optimization
-
-    // Group employees by dept/subdept in schedule order
-    const deptEmployees = {};
-    employeesInOrder.forEach(name => {
-        const empRow = newSchedule.find(row => row.name === name);
-        if (!empRow) return;
-
-        const deptKey = `${empRow.dept}|${empRow.job}`;
-        if (!deptEmployees[deptKey]) {
-            deptEmployees[deptKey] = [];
-        }
-        deptEmployees[deptKey].push(name);
-    });
-
-    // Check each dept/subdept for potential swaps
-    for (let deptKey in deptEmployees) {
-        const [dept, subdept] = deptKey.split('|');
-        const group = findGroupContaining(dept, subdept);
-        if (!group) continue; // Skip if not in any group
-
-        const employees = deptEmployees[deptKey];
-
-        // Check each break type (first rest = 0, second rest = 2)
-        for (let breakIndex of [0, 2]) {
-            // Compare each pair of employees in schedule order
-            for (let i = 0; i < employees.length; i++) {
-                for (let j = i + 1; j < employees.length; j++) {
-                    const empA = employees[i];
-                    const empB = employees[j];
-
-                    // Skip if either doesn't have this break
-                    if (!breaks[empA] || !breaks[empB]) continue;
-                    if (breaks[empA][breakIndex] === undefined || breaks[empB][breakIndex] === undefined) continue;
-
-                    const timeA = breaks[empA][breakIndex];
-                    const timeB = breaks[empB][breakIndex];
-
-                    // If A appears before B in schedule but has a later break time, consider swapping
-                    if (timeA > timeB) {
-                        // Swap and check if coverage remains identical
-                        const originalBreaks = JSON.parse(JSON.stringify(breaks));
-                        breaks[empA][breakIndex] = timeB;
-                        breaks[empB][breakIndex] = timeA;
-
-                        const coverageOriginal = calculateCoverageMap(newSchedule, shifts, originalBreaks);
-                        const coverageSwapped = calculateCoverageMap(newSchedule, shifts, breaks);
-
-                        // Check if coverage is identical at all times during operating hours
-                        let coverageIdentical = true;
-                        for (let t = startOfDay; t <= endOfDay; t += 15) {
-                            const origCoworkers = getCoworkersAtTime(coverageOriginal, t, dept, subdept);
-                            const swapCoworkers = getCoworkersAtTime(coverageSwapped, t, dept, subdept);
-                            if (origCoworkers.length !== swapCoworkers.length) {
-                                coverageIdentical = false;
-                                break;
-                            }
-                        }
-
-                        if (coverageIdentical) {
-                            const breakName = breakIndex === 0 ? 'first rest' : 'second rest';
-                            console.log(`[BREAK SWAP] ${empA} and ${empB} (${group.name}): swapped ${breakName} breaks (${minutesToTime(timeA)} ↔ ${minutesToTime(timeB)}) to preserve schedule order with identical coverage`);
-                        } else {
-                            // Revert the swap
-                            breaks[empA][breakIndex] = timeA;
-                            breaks[empB][breakIndex] = timeB;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Calculate and log coverage maps for debugging
-    const coverageBefore = calculateCoverageMap(newSchedule, shifts, {});
-    const coverageAfter = calculateCoverageMap(newSchedule, shifts, breaks);
-
-    console.log("Coverage optimization complete");
-    console.log(`Operating hours: ${minutesToTime(startOfDay)} - ${minutesToTime(endOfDay)}`);
-    console.log("Sample coverage (4:00 PM before breaks):", coverageBefore[16 * 60]);
-    console.log("Sample coverage (4:00 PM after breaks):", coverageAfter[16 * 60]);
-
-    // Return breaks and segments for writing back to the sheet
-    return { breaks, segments };
-}
+// NOTE: The scheduleBreaks() function has been moved to scheduler.js
+// This allows the same core scheduling logic to be used in both the web app and Office Scripts
+// Helper functions timeToMinutes, minutesToTime, and formatName are also in scheduler.js
 
 // Helper: convert string to ArrayBuffer
 function stringToArrayBuffer(string) {
@@ -2032,35 +1339,6 @@ function stringToArrayBuffer(string) {
         view[i] = string.charCodeAt(i) & 0xFF;
     }
     return buffer;
-}
-
-// Helper: time strings → minutes
-function timeToMinutes(time) {
-    if (!time) return 0;
-    return (time.includes("AM") || time.includes("PM")
-        ? ((+time.split(":")[0] % 12) + (time.includes("PM") ? 12 : 0)) * 60 + +time.split(":")[1].slice(0, 2)
-        : +time.split(":")[0] * 60 + +time.split(":")[1]);
-}
-
-// Helper: minutes → time strings
-function minutesToTime(minutes) {
-    return `${(minutes / 60 + 11) % 12 + 1 | 0}:${(minutes % 60).toString().padStart(2, "0")}${minutes < 720 ? "AM" : "PM"}`;
-}
-
-// Helper: format name
-function formatName(name) {
-    const words = name.split(" ").map(word => {
-        word = word[0].toUpperCase() + word.slice(1).toLowerCase();
-
-        if (word.startsWith("Mc") || word.startsWith("O'")) {
-            word = word.slice(0, 2) + word[2].toUpperCase() + word.slice(3);
-        }
-
-        return word;
-    });
-
-    const formattedWords = words.slice(0, 2);
-    return formattedWords.join(" ");
 }
 
 // Extract the schedule date from the raw worksheet rows
