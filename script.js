@@ -389,29 +389,45 @@ function renderDepartmentPicker() {
 
     accordion.innerHTML = '';
 
-    // Get available departments (not in other groups)
-    const available = getAvailableDepartments();
+    // Get departments already in groups
+    const departmentsInGroups = getDepartmentsInGroups();
 
-    // If editing, add current group's departments to available list
+    // Get current group's departments if editing
+    let currentGroupDepts = [];
     if (currentEditingGroupId !== null) {
         const groups = getGroups();
         const currentGroup = groups.find(g => g.id === currentEditingGroupId);
         if (currentGroup) {
-            currentGroup.departments.forEach(dept => {
-                if (!available.some(d => d.main === dept.main && d.sub === dept.sub)) {
-                    available.push(dept);
-                }
-            });
+            currentGroupDepts = currentGroup.departments;
         }
     }
 
-    // Group available departments by main category
+    // Build list of all departments with their availability status
+    const allDepartments = [];
+    for (let main in DEPARTMENT_REGISTRY) {
+        DEPARTMENT_REGISTRY[main].forEach(sub => {
+            const isInOtherGroup = departmentsInGroups.some(d =>
+                d.main === main && d.sub === sub &&
+                !currentGroupDepts.some(cd => cd.main === main && cd.sub === sub)
+            );
+            const groupContaining = isInOtherGroup ? findGroupContaining(main, sub) : null;
+
+            allDepartments.push({
+                main,
+                sub,
+                disabled: isInOtherGroup,
+                groupName: groupContaining ? groupContaining.name : null
+            });
+        });
+    }
+
+    // Group all departments by main category
     const byCategory = {};
-    available.forEach(dept => {
+    allDepartments.forEach(dept => {
         if (!byCategory[dept.main]) {
             byCategory[dept.main] = [];
         }
-        byCategory[dept.main].push(dept.sub);
+        byCategory[dept.main].push(dept);
     });
 
     // Sort categories alphabetically
@@ -420,7 +436,7 @@ function renderDepartmentPicker() {
     // Build accordion
     sortedCategories.forEach((category, index) => {
         const cardId = `category-${index}`;
-        const departments = byCategory[category].sort();
+        const departments = byCategory[category].sort((a, b) => a.sub.localeCompare(b.sub));
 
         const card = document.createElement('div');
         card.className = 'card';
@@ -435,19 +451,26 @@ function renderDepartmentPicker() {
             <div id="collapse-${cardId}" class="collapse ${index === 0 ? 'show' : ''}"
                  aria-labelledby="heading-${cardId}" data-parent="#departmentAccordion">
                 <div class="card-body p-2">
-                    ${departments.map(sub => {
+                    ${departments.map(dept => {
                         const isSelected = selectedDepartmentsInModal.some(d =>
-                            d.main === category && d.sub === sub
+                            d.main === category && d.sub === dept.sub
                         );
+                        const labelText = dept.disabled
+                            ? `${escapeHtml(dept.sub)} <em class="text-muted" style="font-size: 0.85em;">(in ${escapeHtml(dept.groupName)})</em>`
+                            : escapeHtml(dept.sub);
+
                         return `
                             <div class="form-check">
                                 <input type="checkbox" class="form-check-input dept-picker-checkbox"
-                                       id="dept-${escapeHtml(category)}-${escapeHtml(sub)}"
+                                       id="dept-${escapeHtml(category)}-${escapeHtml(dept.sub)}"
                                        data-main="${escapeHtml(category)}"
-                                       data-sub="${escapeHtml(sub)}"
-                                       ${isSelected ? 'checked' : ''}>
-                                <label class="form-check-label small" for="dept-${escapeHtml(category)}-${escapeHtml(sub)}">
-                                    ${escapeHtml(sub)}
+                                       data-sub="${escapeHtml(dept.sub)}"
+                                       ${isSelected ? 'checked' : ''}
+                                       ${dept.disabled ? 'disabled' : ''}>
+                                <label class="form-check-label small ${dept.disabled ? 'text-muted' : ''}"
+                                       for="dept-${escapeHtml(category)}-${escapeHtml(dept.sub)}"
+                                       style="${dept.disabled ? 'cursor: not-allowed;' : ''}">
+                                    ${labelText}
                                 </label>
                             </div>
                         `;
