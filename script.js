@@ -1053,7 +1053,7 @@ function applyReportStyling(sheet, rows) {
         const cell = touchCell(0, c); // A1-G1
         cell.s = {
             font: { name: "Arial", sz: 9, bold: true },
-            alignment: { horizontal: "left", vertical: "center" }
+            alignment: { horizontal: "left", vertical: "center", wrapText: true }
         };
     }
 
@@ -1062,7 +1062,7 @@ function applyReportStyling(sheet, rows) {
         const cell = touchCell(1, c); // A2-G2
         cell.s = {
             font: { name: "Arial", sz: 9, bold: true },
-            alignment: { horizontal: "left", vertical: "center" }
+            alignment: { horizontal: "left", vertical: "center", wrapText: true }
         };
     }
 
@@ -1071,7 +1071,7 @@ function applyReportStyling(sheet, rows) {
         const cell = touchCell(2, c); // A3-G3
         cell.s = {
             font: { name: "Arial", sz: 7.5, bold: true },
-            alignment: { horizontal: "left", vertical: "center" }
+            alignment: { horizontal: "left", vertical: "center", wrapText: true }
         };
     }
 
@@ -1080,7 +1080,7 @@ function applyReportStyling(sheet, rows) {
         const cell = touchCell(r, 0); // column A
         cell.s = {
             font: { name: "Arial", sz: 7.5, bold: true },
-            alignment: { horizontal: "left", vertical: "center" }
+            alignment: { horizontal: "left", vertical: "center", wrapText: true }
         };
     }
 
@@ -1091,7 +1091,7 @@ function applyReportStyling(sheet, rows) {
             const cell = touchCell(r, c);
             cell.s = {
                 font: { name: "Arial", sz: 7.5, bold: true },
-                alignment: { horizontal: "left", vertical: "center" },
+                alignment: { horizontal: "left", vertical: "center", wrapText: true },
                 border: {
                     top:    { style: "thin", color: { rgb: "000000" } },
                     bottom: { style: "thin", color: { rgb: "000000" } },
@@ -1118,7 +1118,7 @@ function applyReportStyling(sheet, rows) {
                 const cell = touchCell(r, c);
                 cell.s = {
                     font: { name: "Arial", sz: 7.5, bold: true },
-                    alignment: { horizontal: "left", vertical: "top" },
+                    alignment: { horizontal: "left", vertical: "top", wrapText: true },
                     border: {
                         top:    { style: "thin", color: { rgb: "000000" } },
                         bottom: { style: "thin", color: { rgb: "000000" } },
@@ -1135,7 +1135,7 @@ function applyReportStyling(sheet, rows) {
                 const fontSize = (c >= 4 && c <= 6) ? 9 : 6.75;
                 cell.s = {
                     font: { name: "Arial", sz: fontSize, bold: false },
-                    alignment: { horizontal: "left", vertical: "top" },
+                    alignment: { horizontal: "left", vertical: "top", wrapText: true },
                     border: {
                         top:    { style: "thin", color: { rgb: "000000" } },
                         bottom: { style: "thin", color: { rgb: "000000" } },
