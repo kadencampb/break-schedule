@@ -854,15 +854,19 @@ document.getElementById("downloadLink").addEventListener("click", () => {
         if (dailySchedules.length > 1) {
             // Process multiple daily schedules
             processMultipleDailySchedules(dailySchedules);
-        } else {
-            // Single schedule - process as before
-            const scheduleDate = extractScheduleDate(rowData);
-            const operatingHours = getOperatingHoursForDate(scheduleDate);
+        } else if (dailySchedules.length === 1) {
+            // Single schedule - process same way as multi-day for consistency
+            const schedule = dailySchedules[0];
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(schedule.rows);
 
-            processRowDataInPlace(sheet, rowData, operatingHours);
-            applyReportStyling(sheet, rowData);
+            const operatingHours = getOperatingHoursForDate(schedule.date);
+            processRowDataInPlace(ws, schedule.rows, operatingHours);
+            applyReportStyling(ws, schedule.rows);
 
-            const workbookBlob = XLSX.write(workbook, {
+            XLSX.utils.book_append_sheet(wb, ws, "Schedule");
+
+            const workbookBlob = XLSX.write(wb, {
                 bookType: "xlsx",
                 type: "binary",
                 cellStyles: true
@@ -872,8 +876,10 @@ document.getElementById("downloadLink").addEventListener("click", () => {
 
             const hiddenDownloadLink = document.getElementById("hiddenDownloadLink");
             hiddenDownloadLink.href = url;
-            hiddenDownloadLink.download = `Break Schedule ${scheduleDate}.xlsx`;
+            hiddenDownloadLink.download = `Break Schedule ${schedule.date}.xlsx`;
             hiddenDownloadLink.click();
+        } else {
+            alert("No valid schedule found in the uploaded file.");
         }
     };
 
@@ -1125,8 +1131,10 @@ function applyReportStyling(sheet, rows) {
             // Non-header row: columns A-G (normal, with borders)
             for (let c = 0; c <= 6; c++) {
                 const cell = touchCell(r, c);
+                // Breaks columns (E, F, G = indices 4, 5, 6) get 9pt font, others get 6.75pt
+                const fontSize = (c >= 4 && c <= 6) ? 9 : 6.75;
                 cell.s = {
-                    font: { name: "Arial", sz: 6.75, bold: false },
+                    font: { name: "Arial", sz: fontSize, bold: false },
                     alignment: { horizontal: "left", vertical: "top" },
                     border: {
                         top:    { style: "thin", color: { rgb: "000000" } },
