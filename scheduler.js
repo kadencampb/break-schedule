@@ -108,7 +108,12 @@ const DEFAULT_GROUPS = [
         name: "Clothing",
         departments: [
             {main: "Softgoods", sub: "Clothing"},
-            {main: "Softgoods", sub: "Softgoods"}
+            {main: "Softgoods", sub: "Softgoods"},
+            {main: "Softgoods", sub: "Fitting Room"},
+            {main: "Softgoods", sub: "Mens Clothing"},
+            {main: "Softgoods", sub: "Womens Clothing"},
+            {main: "Softgoods", sub: "Outfitter"},
+            {main: "Softgoods", sub: "Childrenswear"}
         ]
     },
     {
@@ -120,15 +125,56 @@ const DEFAULT_GROUPS = [
         id: 5,
         name: "Cashier",
         departments: [{main: "Frontline", sub: "Cashier"}]
+    },
+    {
+        id: 6,
+        name: "Customer Service",
+        departments: [{main: "Frontline", sub: "Customer Service"}]
+    },
+    {
+        id: 7,
+        name: "Order Fulfillment",
+        departments: [
+            {main: "Order Fulfillment", sub: "Order Fulfillment"},
+            {main: "Order Fulfillment", sub: "Order Fulfillment Bldg 2"}
+        ]
+    },
+    {
+        id: 8,
+        name: "Stocking",
+        departments: [
+            {main: "Product Movement", sub: "Softgoods Stock"},
+            {main: "Product Movement", sub: "Stocking"},
+            {main: "Product Movement", sub: "Snow Sports Stock"},
+            {main: "Product Movement", sub: "Ops Stock Bldg 2"},
+            {main: "Product Movement", sub: "Ops Stock"},
+            {main: "Product Movement", sub: "Hardgoods Stock"},
+            {main: "Product Movement", sub: "Footwear Stock"},
+            {main: "Product Movement", sub: "Cycling Stock"},
+            {main: "Product Movement", sub: "Clothing Stock"},
+            {main: "Product Movement", sub: "Camping Stock"},
+            {main: "Product Movement", sub: "Action Sports Stock"}
+        ]
+    },
+    {
+        id: 9,
+        name: "Service Advisor",
+        departments: [{main: "Shop", sub: "Service Advisor"}]
+    },
+    {
+        id: 10,
+        name: "Management",
+        departments: [
+            {main: "Mgmt Retail", sub: "Management"},
+            {main: "Mgmt Retail", sub: "Management Bldg 2"}
+        ]
     }
 ];
 
 // Default advanced settings
 const DEFAULT_ADVANCED_SETTINGS = {
-    maxMealEarly: 15,        // Max minutes to schedule meal early
-    maxMealDelay: 30,        // Max minutes to delay meal
-    maxRestEarly: 15,        // Max minutes to schedule rest break early
-    maxRestDelay: 30,        // Max minutes to delay rest break
+    maxEarly: 15,            // Max minutes to schedule any break early
+    maxDelay: 30,            // Max minutes to delay any break
     deptWeightMultiplier: 4, // How much to prioritize same-department coverage
     proximityWeight: 1       // Weight for proximity to ideal time
 };
@@ -266,52 +312,104 @@ function getCoworkersAtTime(coverage, time, dept, subdept, groups = DEFAULT_GROU
 }
 
 /**
- * Count how many employees from the same dept/subdept are on break at a specific time
- * If the dept/subdept belongs to a group, counts breaks across ALL departments within that group
+ * Find the optimal time for a break by evaluating coverage at different candidate times
+ * Consolidates the logic used for meal breaks, first rest breaks, and second rest breaks
  */
-function countBreaksAtTime(schedule, breaks, targetTime, breakDuration, dept, subdept, groups = DEFAULT_GROUPS) {
-    let count = 0;
+function findOptimalBreakTime(params) {
+    const {
+        empName,
+        idealTime,
+        breakDuration, // 15 for rest, 30 for meal
+        breakIndex, // 0, 1, or 2
+        shiftStart,
+        shiftEnd,
+        dept,
+        subdept,
+        group,
+        breaks,
+        newSchedule,
+        shifts,
+        startOfDay,
+        endOfDay,
+        advSettings,
+        log
+    } = params;
 
-    // Check if this department belongs to a group
-    const group = findGroupContaining(dept, subdept, groups);
+    // Generate possible times based on advanced settings
+    const possibleTimes = [idealTime];
+    for (let delay = 15; delay <= advSettings.maxDelay; delay += 15) {
+        possibleTimes.push(idealTime + delay);
+    }
+    for (let early = 15; early <= advSettings.maxEarly; early += 15) {
+        possibleTimes.push(idealTime - early);
+    }
 
-    for (let name in breaks) {
-        // Find this employee's dept/subdept
-        const empRow = schedule.find(row => row.name === name);
-        if (!empRow) continue;
+    // Filter to only valid times within shift
+    const validTimes = possibleTimes.filter(t =>
+        t >= shiftStart && t + breakDuration <= shiftEnd
+    );
 
-        // Check if employee belongs to the same group or department
-        let isInScope = false;
-        if (group) {
-            // Check if employee is in ANY department within this group
-            isInScope = group.departments.some(d =>
-                d.main === empRow.dept && d.sub === empRow.job
-            );
-        } else {
-            // Original behavior - only same dept/subdept
-            isInScope = (empRow.dept === dept && empRow.job === subdept);
+    let bestTime = idealTime;
+    let bestScore = -Infinity;
+
+    for (const testTime of validTimes) {
+        // Create temporary breaks with this test time
+        const tempBreaks = JSON.parse(JSON.stringify(breaks));
+        tempBreaks[empName] = tempBreaks[empName] || [];
+        tempBreaks[empName][breakIndex] = testTime;
+
+        // Calculate coverage map with this break time
+        const coverageMap = calculateCoverageMap(newSchedule, shifts, tempBreaks, startOfDay, endOfDay);
+
+        // Calculate minimum coverage during the break window
+        let minDeptCoverage = Infinity;
+        let minGroupCoverage = Infinity;
+
+        for (let time = testTime; time < testTime + breakDuration; time += 15) {
+            const coworkers = coverageMap[time] || [];
+
+            // Count same-department coverage
+            const deptCoverage = coworkers.filter(c => c.dept === dept && c.subdept === subdept).length;
+            minDeptCoverage = Math.min(minDeptCoverage, deptCoverage);
+
+            // Count group coverage (all departments in the group)
+            const groupCoverage = group
+                ? coworkers.filter(c =>
+                    group.departments.some(d => d.main === c.dept && d.sub === c.subdept)
+                ).length
+                : 0;
+            minGroupCoverage = Math.min(minGroupCoverage, groupCoverage);
         }
 
-        if (!isInScope) continue;
+        // Check if break is outside operating hours - these are heavily preferred
+        const isOutsideOperatingHours = testTime < startOfDay || (testTime + breakDuration) > endOfDay;
 
-        // Check all their breaks
-        const empBreaks = breaks[name];
-        for (let i = 0; i < empBreaks.length; i++) {
-            if (empBreaks[i] === undefined) continue;
+        // Calculate score
+        let score;
+        if (isOutsideOperatingHours) {
+            score = 1000; // Breaks outside operating hours get maximum score
+        } else {
+            score = (minDeptCoverage * advSettings.deptWeightMultiplier) + minGroupCoverage;
+        }
 
-            const breakStart = empBreaks[i];
-            const duration = (i === 1) ? 30 : 15;
-            const breakEnd = breakStart + duration;
+        // Add proximity bonus for being closer to ideal time
+        const maxDistance = Math.max(advSettings.maxEarly, advSettings.maxDelay);
+        const maxIntervals = maxDistance / 15;
+        const distanceFromIdeal = Math.abs(testTime - idealTime);
+        const intervalsAway = distanceFromIdeal / 15;
+        const proximityBonus = Math.max(0, advSettings.proximityWeight * (maxIntervals - intervalsAway));
 
-            // Check if this break overlaps with our target time
-            if (targetTime < breakEnd && targetTime + breakDuration > breakStart) {
-                count++;
-                break; // Only count each employee once
-            }
+        const finalScore = score + proximityBonus;
+
+        log(`  [EVAL] ${empName}: ${minutesToTime(testTime)} → dept coverage ${minDeptCoverage}, group coverage ${minGroupCoverage}, score ${score}, final ${finalScore.toFixed(2)}`);
+
+        if (finalScore > bestScore) {
+            bestScore = finalScore;
+            bestTime = testTime;
         }
     }
 
-    return count;
+    return { bestTime, bestScore };
 }
 
 /**
@@ -321,7 +419,7 @@ function countBreaksAtTime(schedule, breaks, targetTime, breakDuration, dept, su
  * @param {Object} options - Configuration options
  * @param {Object} options.operatingHours - {startTime: minutes, endTime: minutes}
  * @param {Array} options.groups - Coverage optimization groups
- * @param {Object} options.advancedSettings - Break staggering settings
+ * @param {Object} options.advancedSettings - Coverage optimization settings
  * @param {boolean} options.enableLogging - Whether to log debug info (default: true)
  * @returns {Object} - {breaks, segments, schedule, shifts}
  */
@@ -337,7 +435,7 @@ function scheduleBreaks(schedule, options = {}) {
     const startOfDay = operatingHours.startTime;
     const endOfDay = operatingHours.endTime;
 
-    let dept, newSchedule = [], shiftSegments = [];
+    let dept, newSchedule = [];
     const segments = []; // Track segments with row indices for writing back
 
     // Logging helper
@@ -348,17 +446,6 @@ function scheduleBreaks(schedule, options = {}) {
         // If the first column contains a department name, assign it to "dept" and skip further processing for that row
         if (schedule[i][0]) {
             dept = schedule[i][0];
-
-            // Rename "Mgmt Retail" to "Management"
-            if (dept === "Mgmt Retail") {
-                dept = "Management";
-            }
-
-            // Remove "Training-" from department names that start with it
-            if (dept.startsWith("Training-")) {
-                dept = dept.replace("Training-", "");
-            }
-
             continue;
         }
 
@@ -382,17 +469,6 @@ function scheduleBreaks(schedule, options = {}) {
             interval: interval
         });
 
-        // Accumulate shift segments by employee name
-        if (!shiftSegments[name]) {
-            shiftSegments[name] = [];
-        }
-
-        shiftSegments[name].push({
-            dept: dept,
-            job: schedule[i][1],
-            interval: interval
-        });
-
         // Track segments with their row indices for writing back to the sheet
         segments.push({
             name: name,
@@ -405,23 +481,6 @@ function scheduleBreaks(schedule, options = {}) {
         });
     }
 
-    // Predefined order of departments
-    const departmentOrder = ["Frontline", "Hardgoods", "Softgoods", "Order Fulfillment", "Product Movement", "Shop", "Management"];
-
-    // Function to get the department index for sorting
-    function getDeptOrder(d) {
-        let index = departmentOrder.indexOf(d);
-        return index === -1 ? departmentOrder.length : index;
-    }
-
-    // Sort by predefined dept order; keep relative order otherwise
-    newSchedule.sort((a, b) => {
-        let da = getDeptOrder(a.dept);
-        let db = getDeptOrder(b.dept);
-        if (da !== db) return da - db;
-        return 0;
-    });
-
     // Calculate the earliest and latest times for each person's shift
     let shifts = {};
     newSchedule.forEach(row => {
@@ -431,31 +490,11 @@ function scheduleBreaks(schedule, options = {}) {
     });
 
     // ====================================================================================
-    // STEP 0: DETECT EXISTING BREAKS FROM UKG
+    // STEP 1: SCHEDULE MEAL PERIODS (CALIFORNIA LAW COMPLIANT)
     // ====================================================================================
 
     // Initialize breaks object
     let breaks = {};
-
-    // Detect lunch breaks already scheduled in UKG (from 30-minute gaps in the schedule)
-    for (let name in shiftSegments) {
-        let segs = shiftSegments[name];
-        segs.sort((a, b) => a.interval[0] - b.interval[0]);
-
-        for (let i = 0; i < segs.length - 1; i++) {
-            if (segs[i].interval[1] >= shifts[name][0] + 240 &&
-                segs[i + 1].interval[0] === segs[i].interval[1] + 30) {
-                if (!breaks[name]) {
-                    breaks[name] = [];
-                }
-                breaks[name][1] = segs[i].interval[1];
-            }
-        }
-    }
-
-    // ====================================================================================
-    // STEP 1: SCHEDULE MEAL PERIODS (CALIFORNIA LAW COMPLIANT)
-    // ====================================================================================
 
     // Determine who needs meal periods based on shift duration
     // Process employees in schedule order for consistent break assignment
@@ -485,8 +524,7 @@ function scheduleBreaks(schedule, options = {}) {
                 name: name,
                 shiftStart: shifts[name][0],
                 shiftEnd: shifts[name][1],
-                mealsNeeded: mealsNeeded,
-                hasUKGLunch: breaks[name] && breaks[name][1] !== undefined
+                mealsNeeded: mealsNeeded
             });
         }
     });
@@ -494,9 +532,6 @@ function scheduleBreaks(schedule, options = {}) {
     // Schedule first meal period at ideal time (+4 hours), handling conflicts greedily
     for (let emp of employeesNeedingMeals) {
         if (!breaks[emp.name]) breaks[emp.name] = [];
-
-        // Skip if already has lunch from UKG
-        if (emp.hasUKGLunch) continue;
 
         // Find the employee's dept/subdept
         const empRow = newSchedule.find(row => row.name === emp.name);
@@ -508,7 +543,7 @@ function scheduleBreaks(schedule, options = {}) {
         // Check if this department is in a group
         const group = findGroupContaining(dept, subdept, groups);
 
-        // Skip if break staggering is disabled (not in any group)
+        // Skip if coverage optimization is disabled (not in any group)
         if (!group) {
             // Just schedule at ideal time without conflict resolution
             breaks[emp.name][1] = emp.shiftStart + 240; // +4:00 hours
@@ -518,91 +553,34 @@ function scheduleBreaks(schedule, options = {}) {
         // Ideal meal time: +4 hours into shift
         const idealMealTime = emp.shiftStart + 240;
 
-        // Count how many coworkers already have lunch at the ideal time
-        const conflictsAtIdeal = countBreaksAtTime(newSchedule, breaks, idealMealTime, 30, dept, subdept, groups);
+        log(`[MEAL DEBUG] ${emp.name} (${subdept}): ideal time ${minutesToTime(idealMealTime)}`);
 
-        log(`[MEAL DEBUG] ${emp.name} (${subdept}): ideal time ${minutesToTime(idealMealTime)}, conflicts: ${conflictsAtIdeal}`);
-
-        // Coverage-based optimization:
-        // Try multiple meal times and pick the one that maximizes coverage
-        // Priority: 1) Same department coverage, 2) Group coverage
-
-        // Generate possible times based on advanced settings
-        const possibleTimes = [idealMealTime];
-
-        // Add delayed times (after ideal) in 15-minute increments
-        for (let delay = 15; delay <= advSettings.maxMealDelay; delay += 15) {
-            possibleTimes.push(idealMealTime + delay);
-        }
-
-        // Add early times (before ideal) in 15-minute increments
-        for (let early = 15; early <= advSettings.maxMealEarly; early += 15) {
-            possibleTimes.push(idealMealTime - early);
-        }
-
-        // Filter to only valid times within shift
-        const validTimes = possibleTimes.filter(t => t >= emp.shiftStart && t + 30 <= emp.shiftEnd);
-
-        let bestTime = idealMealTime;
-        let bestScore = -Infinity;
-
-        for (const testTime of validTimes) {
-            // Create temporary breaks with this test time
-            const tempBreaks = JSON.parse(JSON.stringify(breaks));
-            tempBreaks[emp.name] = tempBreaks[emp.name] || [];
-            tempBreaks[emp.name][1] = testTime;
-
-            // Calculate coverage map with this meal time
-            const coverageMap = calculateCoverageMap(newSchedule, shifts, tempBreaks, startOfDay, endOfDay);
-
-            // Calculate minimum coverage during the actual meal break window (30 minutes)
-            // Priority 1: Same department coverage
-            // Priority 2: Group coverage
-            let minDeptCoverage = Infinity;
-            let minGroupCoverage = Infinity;
-
-            for (let time = testTime; time < testTime + 30; time += 15) {
-                const coworkers = coverageMap[time] || [];
-
-                // Count same-department coverage
-                const deptCoverage = coworkers.filter(c => c.dept === dept && c.subdept === subdept).length;
-                minDeptCoverage = Math.min(minDeptCoverage, deptCoverage);
-
-                // Count group coverage (all departments in the group)
-                const groupCoverage = coworkers.filter(c =>
-                    group.departments.some(d => d.main === c.dept && d.sub === c.subdept)
-                ).length;
-                minGroupCoverage = Math.min(minGroupCoverage, groupCoverage);
-            }
-
-            // Score: prioritize same-department coverage, then group coverage
-            // Weight department coverage based on advanced settings
-            const score = (minDeptCoverage * advSettings.deptWeightMultiplier) + minGroupCoverage;
-
-            // Add proximity bonus for being closer to ideal time
-            // Bonus decreases in discrete steps based on 15-minute intervals from ideal
-            const maxDistance = Math.max(advSettings.maxMealEarly, advSettings.maxMealDelay);
-            const maxIntervals = maxDistance / 15;
-            const distanceFromIdeal = Math.abs(testTime - idealMealTime);
-            const intervalsAway = distanceFromIdeal / 15;
-            const proximityBonus = Math.max(0, advSettings.proximityWeight * (maxIntervals - intervalsAway));
-
-            const finalScore = score + proximityBonus;
-
-            log(`  [EVAL] ${emp.name}: ${minutesToTime(testTime)} → dept coverage ${minDeptCoverage}, group coverage ${minGroupCoverage}, score ${score}, final ${finalScore.toFixed(2)}`);
-
-            if (finalScore > bestScore) {
-                bestScore = finalScore;
-                bestTime = testTime;
-            }
-        }
+        // Find optimal meal time using coverage optimization
+        const { bestTime, bestScore } = findOptimalBreakTime({
+            empName: emp.name,
+            idealTime: idealMealTime,
+            breakDuration: 30,
+            breakIndex: 1,
+            shiftStart: emp.shiftStart,
+            shiftEnd: emp.shiftEnd,
+            dept,
+            subdept,
+            group,
+            breaks,
+            newSchedule,
+            shifts,
+            startOfDay,
+            endOfDay,
+            advSettings,
+            log
+        });
 
         breaks[emp.name][1] = bestTime;
 
         if (bestTime === idealMealTime) {
             log(`[MEAL SCHEDULE] ${emp.name} (${subdept}): lunch scheduled at ${minutesToTime(idealMealTime)}`);
         } else {
-            log(`[MEAL STAGGER] ${emp.name} (${subdept}): lunch optimized from ${minutesToTime(idealMealTime)} to ${minutesToTime(bestTime)} for coverage (score: ${bestScore})`);
+            log(`[MEAL OPTIMIZE] ${emp.name} (${subdept}): lunch optimized from ${minutesToTime(idealMealTime)} to ${minutesToTime(bestTime)} for coverage (score: ${bestScore})`);
         }
     }
 
@@ -670,87 +648,34 @@ function scheduleBreaks(schedule, options = {}) {
             const idealFirstBreak = shiftStart + 120; // +2:00 hours
 
             if (!group) {
-                // No conflict resolution (not in any group)
+                // No coverage optimization (not in any group)
                 breaks[name][0] = idealFirstBreak;
             } else {
-                // Coverage-based optimization: find the time that maximizes minimum coverage
-                // Generate possible times based on advanced settings
-                const possibleTimes = [idealFirstBreak];
-
-                // Add delayed times (after ideal)
-                for (let delay = 15; delay <= advSettings.maxRestDelay; delay += 15) {
-                    possibleTimes.push(idealFirstBreak + delay);
-                }
-
-                // Add early times (before ideal)
-                for (let early = 15; early <= advSettings.maxRestEarly; early += 15) {
-                    possibleTimes.push(idealFirstBreak - early);
-                }
-
-                let bestTime = idealFirstBreak;
-                let bestMinCoverage = -1;
-
-                for (let i = 0; i < possibleTimes.length; i++) {
-                    const candidateTime = possibleTimes[i];
-                    if (candidateTime < shiftStart || candidateTime + 15 > shiftEnd) continue;
-
-                    // Simulate taking this break and calculate minimum coverage during the break
-                    const tempBreaks = { ...breaks };
-                    if (!tempBreaks[name]) tempBreaks[name] = [];
-                    tempBreaks[name] = [...(breaks[name] || [])];
-                    tempBreaks[name][0] = candidateTime;
-
-                    // Calculate coverage map with this break scheduled
-                    const tempCoverage = calculateCoverageMap(newSchedule, shifts, tempBreaks, startOfDay, endOfDay);
-
-                    // Calculate minimum coverage during the break
-                    // Priority 1: Same department coverage
-                    // Priority 2: Group coverage
-                    let minDeptCoverage = Infinity;
-                    let minGroupCoverage = Infinity;
-
-                    for (let t = candidateTime; t < candidateTime + 15; t += 15) {
-                        const coworkers = tempCoverage[t] || [];
-
-                        // Count same-department coverage
-                        const deptCoverage = coworkers.filter(c => c.dept === dept && c.subdept === subdept).length;
-                        minDeptCoverage = Math.min(minDeptCoverage, deptCoverage);
-
-                        // Count group coverage (all departments in the group)
-                        const groupCoverage = coworkers.filter(c =>
-                            group.departments.some(d => d.main === c.dept && d.sub === c.subdept)
-                        ).length;
-                        minGroupCoverage = Math.min(minGroupCoverage, groupCoverage);
-                    }
-
-                    // Score: prioritize same-department coverage, then group coverage
-                    // Weight department coverage based on advanced settings
-                    const score = (minDeptCoverage * advSettings.deptWeightMultiplier) + minGroupCoverage;
-
-                    // Add proximity bonus for being closer to ideal time
-                    // Bonus decreases in discrete steps based on 15-minute intervals from ideal
-                    const maxDistance = Math.max(advSettings.maxRestEarly, advSettings.maxRestDelay);
-                    const maxIntervals = maxDistance / 15;
-                    const distanceFromIdeal = Math.abs(candidateTime - idealFirstBreak);
-                    const intervalsAway = distanceFromIdeal / 15;
-                    const proximityBonus = Math.max(0, advSettings.proximityWeight * (maxIntervals - intervalsAway));
-
-                    const finalScore = score + proximityBonus;
-
-                    log(`  [EVAL] ${name}: ${minutesToTime(candidateTime)} → dept coverage ${minDeptCoverage}, group coverage ${minGroupCoverage}, score ${score}, final ${finalScore.toFixed(2)}`);
-
-                    // Choose the time that maximizes the final score
-                    if (finalScore > bestMinCoverage) {
-                        bestMinCoverage = finalScore;
-                        bestTime = candidateTime;
-                    }
-                }
+                // Find optimal time using coverage optimization
+                const { bestTime, bestScore } = findOptimalBreakTime({
+                    empName: name,
+                    idealTime: idealFirstBreak,
+                    breakDuration: 15,
+                    breakIndex: 0,
+                    shiftStart,
+                    shiftEnd,
+                    dept,
+                    subdept,
+                    group,
+                    breaks,
+                    newSchedule,
+                    shifts,
+                    startOfDay,
+                    endOfDay,
+                    advSettings,
+                    log
+                });
 
                 breaks[name][0] = bestTime;
 
                 if (bestTime !== idealFirstBreak) {
                     const offset = bestTime - idealFirstBreak;
-                    log(`[REST STAGGER] ${name} (${subdept}): first break adjusted from ${minutesToTime(idealFirstBreak)} to ${minutesToTime(bestTime)} (offset: ${offset > 0 ? '+' : ''}${offset}min, maintains min coverage of ${bestMinCoverage})`);
+                    log(`[REST OPTIMIZE] ${name} (${subdept}): first break optimized from ${minutesToTime(idealFirstBreak)} to ${minutesToTime(bestTime)} for coverage (offset: ${offset > 0 ? '+' : ''}${offset}min, score: ${bestScore})`);
                 }
             }
         }
@@ -760,88 +685,30 @@ function scheduleBreaks(schedule, options = {}) {
             const idealSecondBreak = shiftStart + 390; // 6.5 hours into shift
 
             if (!group) {
-                // No conflict resolution (not in any group)
+                // No coverage optimization (not in any group)
                 breaks[name][2] = idealSecondBreak;
             } else {
-                // Coverage-based optimization: find the time that maximizes minimum coverage
-                // Generate possible times based on advanced settings
-                const possibleTimes = [idealSecondBreak];
-
-                // Add delayed times (after ideal)
-                for (let delay = 15; delay <= advSettings.maxRestDelay; delay += 15) {
-                    possibleTimes.push(idealSecondBreak + delay);
-                }
-
-                // Add early times (before ideal)
-                for (let early = 15; early <= advSettings.maxRestEarly; early += 15) {
-                    possibleTimes.push(idealSecondBreak - early);
-                }
-
-                let bestTime = idealSecondBreak;
-                let bestMinCoverage = -1;
-
-                for (let i = 0; i < possibleTimes.length; i++) {
-                    const candidateTime = possibleTimes[i];
-                    if (candidateTime < shiftStart || candidateTime + 15 > shiftEnd) continue;
-
-                    // Simulate taking this break and calculate minimum coverage during the break
-                    const tempBreaks = { ...breaks };
-                    if (!tempBreaks[name]) tempBreaks[name] = [];
-                    tempBreaks[name] = [...(breaks[name] || [])];
-                    tempBreaks[name][2] = candidateTime;
-
-                    // Calculate coverage map with this break scheduled
-                    const tempCoverage = calculateCoverageMap(newSchedule, shifts, tempBreaks, startOfDay, endOfDay);
-
-                    // Calculate minimum coverage during the break
-                    // Priority 1: Same department coverage
-                    // Priority 2: Group coverage
-                    let minDeptCoverage = Infinity;
-                    let minGroupCoverage = Infinity;
-
-                    for (let t = candidateTime; t < candidateTime + 15; t += 15) {
-                        const coworkers = tempCoverage[t] || [];
-
-                        // Count same-department coverage
-                        const deptCoverage = coworkers.filter(c => c.dept === dept && c.subdept === subdept).length;
-                        minDeptCoverage = Math.min(minDeptCoverage, deptCoverage);
-
-                        // Count group coverage (all departments in the group)
-                        const groupCoverage = coworkers.filter(c =>
-                            group.departments.some(d => d.main === c.dept && d.sub === c.subdept)
-                        ).length;
-                        minGroupCoverage = Math.min(minGroupCoverage, groupCoverage);
-                    }
-
-                    // Score: prioritize same-department coverage, then group coverage
-                    // Weight department coverage based on advanced settings
-                    const score = (minDeptCoverage * advSettings.deptWeightMultiplier) + minGroupCoverage;
-
-                    // Add proximity bonus for being closer to ideal time
-                    // Bonus decreases in discrete steps based on 15-minute intervals from ideal
-                    const maxDistance = Math.max(advSettings.maxRestEarly, advSettings.maxRestDelay);
-                    const maxIntervals = maxDistance / 15;
-                    const distanceFromIdeal = Math.abs(candidateTime - idealSecondBreak);
-                    const intervalsAway = distanceFromIdeal / 15;
-                    const proximityBonus = Math.max(0, advSettings.proximityWeight * (maxIntervals - intervalsAway));
-
-                    const finalScore = score + proximityBonus;
-
-                    log(`  [EVAL] ${name}: ${minutesToTime(candidateTime)} → dept coverage ${minDeptCoverage}, group coverage ${minGroupCoverage}, score ${score}, final ${finalScore.toFixed(2)}`);
-
-                    // Choose the time that maximizes the final score
-                    if (finalScore > bestMinCoverage) {
-                        bestMinCoverage = finalScore;
-                        bestTime = candidateTime;
-                    }
-                }
+                // Find optimal time using coverage optimization
+                const { bestTime } = findOptimalBreakTime({
+                    empName: name,
+                    idealTime: idealSecondBreak,
+                    breakDuration: 15,
+                    breakIndex: 2,
+                    shiftStart,
+                    shiftEnd,
+                    dept,
+                    subdept,
+                    group,
+                    breaks,
+                    newSchedule,
+                    shifts,
+                    startOfDay,
+                    endOfDay,
+                    advSettings,
+                    log
+                });
 
                 breaks[name][2] = bestTime;
-
-                if (bestTime !== idealSecondBreak) {
-                    const offset = bestTime - idealSecondBreak;
-                    log(`[REST STAGGER] ${name} (${subdept}): second break adjusted from ${minutesToTime(idealSecondBreak)} to ${minutesToTime(bestTime)} (offset: ${offset > 0 ? '+' : ''}${offset}min, maintains min coverage of ${bestMinCoverage})`);
-                }
             }
         }
 
