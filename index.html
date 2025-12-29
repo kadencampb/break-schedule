@@ -179,12 +179,12 @@
                             <h6 class="font-weight-bold mb-3">Break Time Flexibility</h6>
 
                             <div class="form-group">
-                                <label for="maxRestDelay">
-                                    Maximum Rest Period Delay: <strong><span id="maxRestDelayValue">30</span> minutes</strong>
+                                <label for="maxEarly">
+                                    Maximum Early Start: <strong><span id="maxEarlyValue">15</span> minutes</strong>
                                 </label>
                                 <div class="slider-container">
                                     <div class="slider-wrapper">
-                                        <input type="range" class="form-control-range" id="maxRestDelay" min="0" max="45" step="15" value="30">
+                                        <input type="range" class="form-control-range" id="maxEarly" min="0" max="45" step="15" value="15">
                                         <div class="slider-ticks">
                                             <div class="slider-tick"><span class="slider-tick-label">0</span></div>
                                             <div class="slider-tick"><span class="slider-tick-label">15</span></div>
@@ -193,16 +193,16 @@
                                         </div>
                                     </div>
                                 </div>
-                                <small class="form-text text-muted">How late a rest break can be scheduled past the ideal time (ideal = 2 hours into shift). Higher values give more flexibility for coverage optimization.</small>
+                                <small class="form-text text-muted">How early any break can be scheduled before the ideal time. Higher values give more flexibility for coverage optimization.</small>
                             </div>
 
                             <div class="form-group">
-                                <label for="maxRestEarly">
-                                    Maximum Rest Period Early Start: <strong><span id="maxRestEarlyValue">15</span> minutes</strong>
+                                <label for="maxDelay">
+                                    Maximum Delay: <strong><span id="maxDelayValue">30</span> minutes</strong>
                                 </label>
                                 <div class="slider-container">
                                     <div class="slider-wrapper">
-                                        <input type="range" class="form-control-range" id="maxRestEarly" min="0" max="45" step="15" value="15">
+                                        <input type="range" class="form-control-range" id="maxDelay" min="0" max="45" step="15" value="30">
                                         <div class="slider-ticks">
                                             <div class="slider-tick"><span class="slider-tick-label">0</span></div>
                                             <div class="slider-tick"><span class="slider-tick-label">15</span></div>
@@ -211,43 +211,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <small class="form-text text-muted">How early a rest break can be scheduled before the ideal time. Higher values give more flexibility for coverage optimization.</small>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="maxMealDelay">
-                                    Maximum Meal Period Delay: <strong><span id="maxMealDelayValue">30</span> minutes</strong>
-                                </label>
-                                <div class="slider-container">
-                                    <div class="slider-wrapper">
-                                        <input type="range" class="form-control-range" id="maxMealDelay" min="0" max="45" step="15" value="30">
-                                        <div class="slider-ticks">
-                                            <div class="slider-tick"><span class="slider-tick-label">0</span></div>
-                                            <div class="slider-tick"><span class="slider-tick-label">15</span></div>
-                                            <div class="slider-tick"><span class="slider-tick-label">30</span></div>
-                                            <div class="slider-tick"><span class="slider-tick-label">45</span></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <small class="form-text text-muted">How late a meal break can be scheduled past the ideal time (ideal = 4 hours into shift). Higher values give more flexibility for coverage optimization.</small>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="maxMealEarly">
-                                    Maximum Meal Period Early Start: <strong><span id="maxMealEarlyValue">15</span> minutes</strong>
-                                </label>
-                                <div class="slider-container">
-                                    <div class="slider-wrapper">
-                                        <input type="range" class="form-control-range" id="maxMealEarly" min="0" max="45" step="15" value="15">
-                                        <div class="slider-ticks">
-                                            <div class="slider-tick"><span class="slider-tick-label">0</span></div>
-                                            <div class="slider-tick"><span class="slider-tick-label">15</span></div>
-                                            <div class="slider-tick"><span class="slider-tick-label">30</span></div>
-                                            <div class="slider-tick"><span class="slider-tick-label">45</span></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <small class="form-text text-muted">How early a meal break can be scheduled before the ideal time. Higher values give more flexibility but may violate labor law timing requirements.</small>
+                                <small class="form-text text-muted">How late any break can be scheduled past the ideal time. Higher values give more flexibility for coverage optimization.</small>
                             </div>
 
                             <hr class="my-4">
