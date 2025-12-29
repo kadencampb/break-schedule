@@ -26,7 +26,7 @@ function saveAdvancedSettings(settings) {
 function initializeAdvancedSettings() {
     const settings = loadAdvancedSettings();
 
-    const fields = ['maxRestDelay', 'maxRestEarly', 'maxMealDelay', 'maxMealEarly', 'deptWeightMultiplier', 'proximityWeight'];
+    const fields = ['maxEarly', 'maxDelay', 'deptWeightMultiplier', 'proximityWeight'];
     fields.forEach(field => {
         const input = document.getElementById(field);
         if (input) {
@@ -54,10 +54,8 @@ function updateAdvancedSettingDisplay(field, value) {
 // Save current advanced settings to localStorage
 function saveCurrentAdvancedSettings() {
     const settings = {
-        maxRestDelay: parseInt(document.getElementById('maxRestDelay')?.value || DEFAULT_ADVANCED_SETTINGS.maxRestDelay),
-        maxRestEarly: parseInt(document.getElementById('maxRestEarly')?.value || DEFAULT_ADVANCED_SETTINGS.maxRestEarly),
-        maxMealDelay: parseInt(document.getElementById('maxMealDelay')?.value || DEFAULT_ADVANCED_SETTINGS.maxMealDelay),
-        maxMealEarly: parseInt(document.getElementById('maxMealEarly')?.value || DEFAULT_ADVANCED_SETTINGS.maxMealEarly),
+        maxEarly: parseInt(document.getElementById('maxEarly')?.value || DEFAULT_ADVANCED_SETTINGS.maxEarly),
+        maxDelay: parseInt(document.getElementById('maxDelay')?.value || DEFAULT_ADVANCED_SETTINGS.maxDelay),
         deptWeightMultiplier: parseInt(document.getElementById('deptWeightMultiplier')?.value || DEFAULT_ADVANCED_SETTINGS.deptWeightMultiplier),
         proximityWeight: parseInt(document.getElementById('proximityWeight')?.value || DEFAULT_ADVANCED_SETTINGS.proximityWeight)
     };
@@ -778,7 +776,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Wire up advanced settings inputs to save on change and update display
-    const advancedFields = ['maxRestDelay', 'maxRestEarly', 'maxMealDelay', 'maxMealEarly', 'deptWeightMultiplier', 'proximityWeight'];
+    const advancedFields = ['maxEarly', 'maxDelay', 'deptWeightMultiplier', 'proximityWeight'];
     advancedFields.forEach(field => {
         const input = document.getElementById(field);
         if (input) {
