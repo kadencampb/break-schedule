@@ -381,16 +381,8 @@ function findOptimalBreakTime(params) {
             minGroupCoverage = Math.min(minGroupCoverage, groupCoverage);
         }
 
-        // Check if break is outside operating hours - these are heavily preferred
-        const isOutsideOperatingHours = testTime < startOfDay || (testTime + breakDuration) > endOfDay;
-
-        // Calculate score
-        let score;
-        if (isOutsideOperatingHours) {
-            score = 1000; // Breaks outside operating hours get maximum score
-        } else {
-            score = (minDeptCoverage * advSettings.deptWeightMultiplier) + minGroupCoverage;
-        }
+        // Calculate score: prioritize department coverage, then group coverage
+        const score = (minDeptCoverage * advSettings.deptWeightMultiplier) + minGroupCoverage;
 
         // Add proximity bonus for being closer to ideal time
         const maxDistance = Math.max(advSettings.maxEarly, advSettings.maxDelay);
