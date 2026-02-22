@@ -337,6 +337,35 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Formatting Settings (Collapsible) -->
+                <div class="card mb-3 settings-card">
+                    <div class="card-header settings-card-header" id="formattingHeader">
+                        <button class="btn btn-link btn-block text-left text-dark font-weight-bold p-0" type="button"
+                                data-toggle="collapse" data-target="#formattingCollapse"
+                                aria-expanded="false" aria-controls="formattingCollapse">
+                            <span class="d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-file-alt mr-2 text-info"></i>Formatting</span>
+                                <i class="fas fa-chevron-down text-info"></i>
+                            </span>
+                        </button>
+                    </div>
+                    <div class="collapse" id="formattingCollapse" aria-labelledby="formattingHeader">
+                        <div class="p-3">
+                            <div class="form-group">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="experimentalFormatting">
+                                    <label class="custom-control-label" for="experimentalFormatting">
+                                        <strong>Enable experimental formatting (in progress)</strong>
+                                    </label>
+                                </div>
+                                <small class="form-text text-muted">
+                                    Enables a new style of formatting that isolates one department per page. This feature is currently under development.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <!-- END UPDATED SETTINGS BLOCK -->
             </div>
 
