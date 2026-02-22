@@ -926,52 +926,318 @@ function splitIntoDailySchedules(rowData) {
     return dailySchedules;
 }
 
-// Process multiple daily schedules and generate separate files
+// Process multiple daily schedules and generate a single file with page breaks
 function processMultipleDailySchedules(dailySchedules) {
-    console.log(`Processing ${dailySchedules.length} daily schedules...`);
+    console.log(`Processing ${dailySchedules.length} daily schedules into single file...`);
+
+    // Create a single workbook
+    const wb = XLSX.utils.book_new();
+
+    // Combined rows for the single worksheet
+    let combinedRows = [];
+
+    // Track where to insert page breaks (row indices where each new date starts)
+    const pageBreaks = [];
 
     dailySchedules.forEach((schedule, index) => {
-        // Create a new workbook for this daily schedule
-        const wb = XLSX.utils.book_new();
+        // Track the starting row for this date's data (for page break)
+        // Page break goes BEFORE this row (except for the first schedule)
+        if (index > 0) {
+            pageBreaks.push(combinedRows.length);
+        }
 
-        // Convert rows to sheet
-        const ws = XLSX.utils.aoa_to_sheet(schedule.rows);
+        // Create a temporary sheet to process this schedule
+        const tempWs = XLSX.utils.aoa_to_sheet(schedule.rows);
 
         // Get operating hours for this date
         const operatingHours = getOperatingHoursForDate(schedule.date);
 
-        // Process breaks for this schedule
-        processRowDataInPlace(ws, schedule.rows, operatingHours);
+        // Process breaks for this schedule (modifies tempWs and schedule.rows)
+        processRowDataInPlace(tempWs, schedule.rows, operatingHours);
 
-        // Apply styling
-        applyReportStyling(ws, schedule.rows);
+        // Convert the processed sheet back to array of arrays
+        const processedRows = XLSX.utils.sheet_to_json(tempWs, { header: 1, defval: "" });
 
-        // Add worksheet to workbook
-        XLSX.utils.book_append_sheet(wb, ws, "Schedule");
-
-        // Generate file
-        const workbookBlob = XLSX.write(wb, {
-            bookType: "xlsx",
-            type: "binary",
-            cellStyles: true
-        });
-        const blob = new Blob([stringToArrayBuffer(workbookBlob)], { type: "application/octet-stream" });
-        const url = URL.createObjectURL(blob);
-
-        // Download the file
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `Break Schedule ${schedule.date}.xlsx`;
-        link.style.display = 'none';
-        document.body.appendChild(link);
-
-        // Use setTimeout to allow multiple downloads
-        setTimeout(() => {
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        }, index * 500); // Stagger downloads by 500ms
+        // Add processed rows to combined rows
+        combinedRows = combinedRows.concat(processedRows);
     });
+
+    // Create the combined worksheet
+    const ws = XLSX.utils.aoa_to_sheet(combinedRows);
+
+    // Apply styling to the combined sheet
+    applyMultiDateReportStyling(ws, combinedRows, dailySchedules);
+
+    // Add page breaks (manual breaks before each new date section)
+    if (pageBreaks.length > 0) {
+        // Format: R = row index (0-based), man = manual break flag
+        ws['!rowBreaks'] = pageBreaks.map(row => ({ R: row, man: 1 }));
+    }
+
+    // Set print settings to help with page breaks
+    ws['!print'] = {
+        area: ws["!ref"],
+        fitToPage: false
+    };
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, "Schedule");
+
+    // Generate filename with date range
+    const firstDate = dailySchedules[0].date;
+    const lastDate = dailySchedules[dailySchedules.length - 1].date;
+    const filename = firstDate === lastDate
+        ? `Break Schedule ${firstDate}.xlsx`
+        : `Break Schedule ${firstDate} to ${lastDate}.xlsx`;
+
+    // Generate file
+    const workbookBlob = XLSX.write(wb, {
+        bookType: "xlsx",
+        type: "binary",
+        cellStyles: true
+    });
+    const blob = new Blob([stringToArrayBuffer(workbookBlob)], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+
+    // Download the file
+    const hiddenDownloadLink = document.getElementById("hiddenDownloadLink");
+    hiddenDownloadLink.href = url;
+    hiddenDownloadLink.download = filename;
+    hiddenDownloadLink.click();
+
+    URL.revokeObjectURL(url);
+}
+
+// Apply styling to a multi-date combined sheet
+function applyMultiDateReportStyling(sheet, rows, dailySchedules) {
+    if (!sheet["!ref"]) return;
+
+    const range = XLSX.utils.decode_range(sheet["!ref"]);
+    const lastRow = range.e.r;
+
+    function cellRef(r, c) {
+        return XLSX.utils.encode_cell({ r, c });
+    }
+
+    // Create / touch a cell and make sure it exists with proper initial structure
+    function touchCell(r, c, forceCreate = true) {
+        const ref = cellRef(r, c);
+        let cell = sheet[ref];
+
+        if (!cell && forceCreate) {
+            cell = { t: "s", v: " " };
+            sheet[ref] = cell;
+        }
+
+        if (!cell) return null;
+
+        if (cell.v === undefined || cell.v === null || cell.v === "") {
+            cell.t = "s";
+            cell.v = " ";
+        }
+
+        if (!cell.s) {
+            cell.s = {
+                font: {},
+                alignment: {}
+            };
+        }
+        if (!cell.s.font) cell.s.font = {};
+        if (!cell.s.alignment) cell.s.alignment = {};
+
+        return cell;
+    }
+
+    // Track the starting row of each date's section
+    const dateSectionStarts = [];
+    let currentRow = 0;
+    dailySchedules.forEach((schedule) => {
+        dateSectionStarts.push(currentRow);
+        // Count rows in this schedule (from the processed output)
+        const scheduleRowCount = schedule.rows.length;
+        currentRow += scheduleRowCount;
+    });
+
+    // Helper to find which date section a row belongs to
+    function getDateSectionIndex(rowIndex) {
+        for (let i = dateSectionStarts.length - 1; i >= 0; i--) {
+            if (rowIndex >= dateSectionStarts[i]) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    // Helper to get the relative row within a date section
+    function getRelativeRow(rowIndex) {
+        const sectionIndex = getDateSectionIndex(rowIndex);
+        return rowIndex - dateSectionStarts[sectionIndex];
+    }
+
+    // Helper to detect data start for a specific section
+    function detectDataStartForSection(sectionStartRow, sectionRows) {
+        for (let i = 0; i < sectionRows.length; i++) {
+            const row = sectionRows[i];
+            if (!row) continue;
+            if (typeof row[2] === "string" && row[2].trim().toLowerCase() === "name") {
+                return sectionStartRow + i + 1;
+            }
+        }
+        return sectionStartRow + 8;
+    }
+
+    // Initialize !merges array
+    if (!sheet["!merges"]) {
+        sheet["!merges"] = [];
+    }
+
+    // Process each date section
+    let rowOffset = 0;
+    dailySchedules.forEach((schedule, sectionIndex) => {
+        const sectionStart = rowOffset;
+        const sectionRows = schedule.rows;
+        const sectionEnd = sectionStart + sectionRows.length - 1;
+        const dataStart = detectDataStartForSection(sectionStart, sectionRows);
+
+        // Style all cells in this section
+        for (let r = sectionStart; r <= sectionEnd; r++) {
+            const relativeRow = r - sectionStart;
+            const row = sectionRows[relativeRow] || [];
+
+            for (let c = 0; c <= 6; c++) {
+                const cell = touchCell(r, c);
+
+                // Standard black border for all cells except first two rows
+                const blackBorder = {
+                    top: { style: "thin", color: { rgb: "000000" } },
+                    bottom: { style: "thin", color: { rgb: "000000" } },
+                    left: { style: "thin", color: { rgb: "000000" } },
+                    right: { style: "thin", color: { rgb: "000000" } }
+                };
+
+                // Row 1 of section (Date row) - NO border
+                if (relativeRow === 0) {
+                    cell.s = {
+                        font: { name: "Arial", sz: 9, bold: true },
+                        alignment: { horizontal: "left", vertical: "center", wrapText: true }
+                    };
+                }
+                // Row 2 of section (Location row) - NO border
+                else if (relativeRow === 1) {
+                    cell.s = {
+                        font: { name: "Arial", sz: 9, bold: true },
+                        alignment: { horizontal: "left", vertical: "center", wrapText: true }
+                    };
+                }
+                // Row 3 of section (Dept/Job header) - with border
+                else if (relativeRow === 2) {
+                    cell.s = {
+                        font: { name: "Arial", sz: 7.5, bold: true },
+                        alignment: { horizontal: "left", vertical: "center", wrapText: true },
+                        border: blackBorder
+                    };
+                }
+                // Rows 5-6 of section - with border
+                else if (relativeRow === 4 || relativeRow === 5) {
+                    // Column A is bold 7.5pt, columns E-G are 9pt, others are 6.75pt
+                    const fontSize = c === 0 ? 7.5 : (c >= 4 && c <= 6) ? 9 : 6.75;
+                    const isBold = c === 0;
+                    cell.s = {
+                        font: { name: "Arial", sz: fontSize, bold: isBold },
+                        alignment: { horizontal: "left", vertical: "top", wrapText: true },
+                        border: blackBorder
+                    };
+                }
+                // Header row (row before data starts) - with border
+                else if (r === dataStart - 1) {
+                    cell.s = {
+                        font: { name: "Arial", sz: 7.5, bold: true },
+                        alignment: { horizontal: "left", vertical: "center", wrapText: true },
+                        border: blackBorder
+                    };
+                }
+                // Data rows - with border
+                else if (r >= dataStart) {
+                    const colA = row[0];
+                    const colC = row[2];
+                    const hasDept = colA != null && String(colA).trim() !== "";
+                    const hasName = colC != null && String(colC).trim() !== "";
+
+                    if (hasDept && !hasName) {
+                        // Department header row
+                        cell.s = {
+                            font: { name: "Arial", sz: 7.5, bold: true },
+                            alignment: { horizontal: "left", vertical: "top", wrapText: true },
+                            border: blackBorder
+                        };
+                    } else if (hasName) {
+                        // Employee row
+                        const fontSize = (c >= 4 && c <= 6) ? 9 : 6.75;
+                        cell.s = {
+                            font: { name: "Arial", sz: fontSize, bold: false },
+                            alignment: { horizontal: "left", vertical: "top", wrapText: true },
+                            border: blackBorder
+                        };
+                    } else {
+                        // Empty/continuation row
+                        cell.s = {
+                            font: { name: "Arial", sz: 6.75, bold: false },
+                            alignment: { horizontal: "left", vertical: "top", wrapText: true },
+                            border: blackBorder
+                        };
+                    }
+                }
+                // Any other rows (between row 2 and data start) - with border
+                else {
+                    cell.s = {
+                        font: { name: "Arial", sz: 6.75, bold: false },
+                        alignment: { horizontal: "left", vertical: "top", wrapText: true },
+                        border: blackBorder
+                    };
+                }
+            }
+        }
+
+        // Add merges for this section
+        // Merge A:G for Date row (row 1 of section)
+        sheet["!merges"].push({ s: { r: sectionStart, c: 0 }, e: { r: sectionStart, c: 6 } });
+
+        // Merge A:G for Location row (row 2 of section)
+        sheet["!merges"].push({ s: { r: sectionStart + 1, c: 0 }, e: { r: sectionStart + 1, c: 6 } });
+
+        // Merge A:B for header row
+        const headerRowIndex = dataStart - 1;
+        if (headerRowIndex >= sectionStart) {
+            sheet["!merges"].push({ s: { r: headerRowIndex, c: 0 }, e: { r: headerRowIndex, c: 1 } });
+        }
+
+        // Merge A:B for department header rows
+        for (let r = dataStart; r <= sectionEnd; r++) {
+            const relativeRow = r - sectionStart;
+            const row = sectionRows[relativeRow] || [];
+            const colA = row[0];
+            const colC = row[2];
+            const hasDept = colA != null && String(colA).trim() !== "";
+            const hasName = colC != null && String(colC).trim() !== "";
+
+            if (hasDept && !hasName) {
+                sheet["!merges"].push({ s: { r: r, c: 0 }, e: { r: r, c: 1 } });
+            }
+        }
+
+        rowOffset += sectionRows.length;
+    });
+
+    // Set column widths
+    sheet["!cols"] = [
+        { wch: 6.14 },  // A
+        { wch: 16 },    // B
+        { wch: 13 },    // C
+        { wch: 13 },    // D (Shift)
+        { wch: 13 },    // E (first break)
+        { wch: 13 },    // F (meal break)
+        { wch: 13 }     // G (second break)
+    ];
 }
 
 // Function to style the schedule (restores your original formatting)
@@ -1073,13 +1339,26 @@ function applyReportStyling(sheet, rows) {
         };
     }
 
-    // 7) A5:A6 Arial, 7.5 pt, bold, left, center
+    // 7) Rows 5-6: All columns with borders, matching data row formatting
+    const blackBorder = {
+        top: { style: "thin", color: { rgb: "000000" } },
+        bottom: { style: "thin", color: { rgb: "000000" } },
+        left: { style: "thin", color: { rgb: "000000" } },
+        right: { style: "thin", color: { rgb: "000000" } }
+    };
+
     for (let r = 4; r <= 5; r++) {
-        const cell = touchCell(r, 0); // column A
-        cell.s = {
-            font: { name: "Arial", sz: 7.5, bold: true },
-            alignment: { horizontal: "left", vertical: "center", wrapText: true }
-        };
+        for (let c = 0; c <= 6; c++) {
+            const cell = touchCell(r, c);
+            // Column A is bold 7.5pt, columns E-G are 9pt, others are 6.75pt
+            const fontSize = c === 0 ? 7.5 : (c >= 4 && c <= 6) ? 9 : 6.75;
+            const isBold = c === 0;
+            cell.s = {
+                font: { name: "Arial", sz: fontSize, bold: isBold },
+                alignment: { horizontal: "left", vertical: "top", wrapText: true },
+                border: blackBorder
+            };
+        }
     }
 
     // 8) Header row: Arial, 7.5 pt, bold, left, center, thin 000000 border
